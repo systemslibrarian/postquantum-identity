@@ -72,12 +72,12 @@ jobs:
           (cd artifacts && sha256sum *.nupkg *.snupkg bom.json | tee SHA256SUMS.txt)
 
       - name: Generate build-provenance attestation for the .nupkg files
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "artifacts/*.nupkg"
 
       - name: Generate build-provenance attestation for the SBOM
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "artifacts/bom.json"
 

@@ -5,8 +5,11 @@ Design notes and pointers for PostQuantum.Identity.
 ## Start here
 
 - [Project README](../README.md) — overview, install, usage, API table.
+- [MIGRATION.md](MIGRATION.md) — moving an existing store from PBKDF2 to Argon2id.
+- [Architecture Decision Records](adr/) — why the library is shaped the way it is.
 - [SECURITY.md](../SECURITY.md) — threat model and cryptographic construction.
 - [KNOWN-GAPS.md](../KNOWN-GAPS.md) — honest list of what is not done yet.
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — how to build, test, and submit changes.
 - [CLAUDE.md](../CLAUDE.md) — repository conventions.
 
 ## Design notes

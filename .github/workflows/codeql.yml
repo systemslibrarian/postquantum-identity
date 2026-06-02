@@ -1,0 +1,46 @@
+name: CodeQL
+
+# Static security analysis for the C# sources. Runs on pushes/PRs to main and on
+# a weekly schedule so newly disclosed query packs catch regressions over time.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "27 4 * * 1" # Mondays 04:27 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (csharp)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          queries: security-and-quality
+
+      # Build the library only (skip the sample/benchmarks) for a fast, focused
+      # analysis of the shipped surface.
+      - name: Build (Release)
+        run: dotnet build src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:csharp"

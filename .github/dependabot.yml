@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Keep NuGet dependencies current. Security-relevant packages (Konscious,
+  # Identity.Core, PostQuantum.Jwt) get patched promptly; grouping keeps the
+  # PR noise low.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      dotnet-test-and-build:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit*"
+          - "Xunit*"
+          - "BenchmarkDotNet*"
+          - "Microsoft.SourceLink.*"
+
+  # Keep the GitHub Actions themselves pinned and current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

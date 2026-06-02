@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "PostQuantum.Identity"
+abstract: >-
+  Post-quantum integration for ASP.NET Core Identity: Argon2id password hashing
+  and PostQuantum.Jwt hybrid (ML-DSA-65 + optional X-Wing) token issuance.
+type: software
+authors:
+  - family-names: Clark
+    given-names: Paul
+repository-code: "https://github.com/systemslibrarian/postquantum-identity"
+url: "https://github.com/systemslibrarian/postquantum-identity"
+license: MIT
+keywords:
+  - aspnetcore
+  - identity
+  - argon2id
+  - post-quantum
+  - ml-dsa
+  - ml-kem
+  - x-wing
+  - cryptography
+version: 0.2.0-preview.1

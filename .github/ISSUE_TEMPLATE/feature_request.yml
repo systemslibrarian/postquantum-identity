@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an enhancement (keeping the surface small is a goal)
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library deliberately keeps a small surface. New public APIs and new
+        dependencies need a clear justification — see [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The user-facing need, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Including whether the sibling packages (argon2id-passwordhasher, PostQuantum.Jwt) already cover it.

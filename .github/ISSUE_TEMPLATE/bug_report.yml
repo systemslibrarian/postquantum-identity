@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a defect in PostQuantum.Identity (NOT a security vulnerability)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security issue?** Do not file it here. Follow [SECURITY.md](../blob/main/SECURITY.md)
+        and use GitHub's private "Report a vulnerability" instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Steps or a small code snippet that reproduces the behavior.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PostQuantum.Identity version
+      placeholder: "0.2.0-preview.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: tfm
+    attributes:
+      label: Target framework
+      options:
+        - net8.0
+        - net9.0
+        - net10.0
+    validations:
+      required: true
+  - type: input
+    id: os-openssl
+    attributes:
+      label: OS / OpenSSL version (for token features)
+      description: "`openssl version` — token features need OpenSSL 3.5+ on Linux."
+      placeholder: "Ubuntu 24.04 / OpenSSL 3.5.5"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Exception text, stack trace, or test output.
+      render: shell

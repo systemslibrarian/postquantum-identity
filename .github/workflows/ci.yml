@@ -20,6 +20,22 @@ jobs:
       - name: Check version is in sync across csproj/README/CHANGELOG
         run: bash scripts/check-version-sync.sh
 
+  format:
+    # Enforce the .editorconfig code style. Keeps diffs about behavior, not
+    # whitespace.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - name: Verify formatting
+        run: dotnet format --verify-no-changes --severity warn
+
   build-test:
     strategy:
       fail-fast: false
@@ -53,11 +69,21 @@ jobs:
         if: runner.os == 'Linux'
         run: openssl version
 
-      - name: Test (Release)
+      - name: Test (Release, with coverage)
         shell: bash
         run: |
           set -o pipefail
-          dotnet test -c Release --no-build --logger "console;verbosity=minimal" | tee test-output.log
+          dotnet test -c Release --no-build --logger "console;verbosity=minimal" \
+            --collect "XPlat Code Coverage" | tee test-output.log
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-${{ matrix.os }}
+          path: "**/coverage.cobertura.xml"
+          if-no-files-found: warn
+          retention-days: 7
 
       # On Windows the runner has the native ML-KEM / ML-DSA primitives, so every
       # post-quantum test MUST run. If anything skipped, we are no longer proving

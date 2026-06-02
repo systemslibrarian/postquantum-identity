@@ -1,6 +1,8 @@
 # PostQuantum.Identity
 
 [![NuGet](https://img.shields.io/nuget/vpre/PostQuantum.Identity?label=nuget&color=blue)](https://www.nuget.org/packages/PostQuantum.Identity)
+[![CI](https://github.com/systemslibrarian/postquantum-identity/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/postquantum-identity/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/systemslibrarian/postquantum-identity/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/postquantum-identity/actions/workflows/codeql.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 
@@ -294,6 +296,14 @@ LD_LIBRARY_PATH=/opt/conda/lib dotnet test
 ```
 
 ---
+
+## Contributing
+
+Issues and PRs welcome — please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) first. For migrating an existing store
+see [`docs/MIGRATION.md`](docs/MIGRATION.md); design decisions are recorded in
+[`docs/adr/`](docs/adr/). Security issues: follow [`SECURITY.md`](SECURITY.md)
+(private disclosure) — never a public issue.
 
 ## License
 

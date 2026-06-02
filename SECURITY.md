@@ -9,11 +9,12 @@ relying on it.
 
 | Version             | Supported           |
 |---------------------|---------------------|
-| `0.2.0-preview.*`   | ✅ (latest preview)  |
+| `0.3.0-preview.*`   | ✅ (latest preview)  |
+| `0.2.0-preview.*`   | ❌ (superseded)      |
 | `0.1.0-preview.*`   | ❌ (superseded)      |
 | anything older      | ❌                  |
 
-During the `0.2.0-preview.*` series only the most recent preview receives fixes.
+During the `0.3.0-preview.*` series only the most recent preview receives fixes.
 
 ## Reporting a vulnerability
 
@@ -95,13 +96,24 @@ for parameters below the documented minimums (8 MiB / t≥1 / p≥1 / 16-byte sa
 
 ## Honesty statement
 
-This is preview software written in the open. It has **not** been audited. The
-Argon2id path is covered by unit tests (round-trip, wrong-password, fail-closed
-parsing, rehash detection). The hybrid-token path is covered by an end-to-end
-test that issues a token for an Identity user and validates it with the genuine
-`PqJwtValidator`, including a wrong-audience rejection. Until a 1.0 release and an
-external review, treat this library as suitable for experimentation only. Known
-limitations are tracked transparently in [`KNOWN-GAPS.md`](KNOWN-GAPS.md).
+This is preview software written in the open. It has **not** been audited.
+
+The Argon2id path is covered by unit tests (round-trip, wrong-password,
+fail-closed PHC parsing, rehash detection) **and Known Answer Tests**: the
+RFC 9106 §5.3 reference vector (including the keyed + associated-data path) and
+the canonical reference-`argon2`-CLI PHC string, which must verify through our
+hasher — proving the engine is spec-correct and our PHC parsing is wire-compatible
+with standard tooling.
+
+The hybrid-token path is covered end-to-end against the genuine `PqJwtValidator`,
+with a fail-closed corpus: sign-then-encrypt roundtrip, reserved-claim override
+protection, and rejection of expired / wrong-key / per-segment-tampered /
+malformed tokens. (Token-level cryptographic KATs — ML-DSA/X-Wing vectors — live
+in PostQuantum.Jwt itself.)
+
+Until a 1.0 release and an external review, treat this library as suitable for
+experimentation only. Known limitations are tracked transparently in
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md).
 
 ---
 

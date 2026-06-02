@@ -69,8 +69,13 @@ Last reviewed for: `0.2.0-preview.1`.
   the .NET 8 runtime.** The Argon2id code is runtime-agnostic and is exercised on
   every installed runtime in CI. The hybrid-token tests run only on net10.0 and
   skip themselves when the host's OpenSSL predates ML-DSA (3.5+).
-- **No property-based or fuzz tests yet.** The PHC parser has hand-written
-  malformed-input cases but no generative fuzzing.
+- **Argon2id has Known Answer Tests; ML-DSA/X-Wing do not (here).** The Argon2id
+  engine is checked against the RFC 9106 §5.3 vector and a reference-CLI PHC
+  string. The token primitives' KATs (ML-DSA, X-Wing) live in PostQuantum.Jwt;
+  this repo tests the token surface behaviorally (roundtrip + fail-closed corpus),
+  not with pinned cryptographic vectors.
+- **No property-based or fuzz tests yet.** The PHC parser and token validator have
+  hand-written malformed-input corpora but no generative fuzzing.
 - **Benchmarks are not run in CI.** `benchmarks/PostQuantum.Identity.Benchmarks`
   (BenchmarkDotNet) exists for local Argon2id work-factor tuning, but the CI
   workflow does not execute it or track regressions over time.

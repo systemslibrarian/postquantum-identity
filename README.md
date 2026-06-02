@@ -29,24 +29,26 @@ exactly what it provides.
 >   verifier.** See [PostQuantum.Jwt's README](https://github.com/systemslibrarian/postquantum-jwt)
 >   for the full rationale.
 
-> **Status — `0.2.0-preview.1`. Preview software. Not for production use.**
+> **Status — `0.3.0-preview.1`. Preview software. Not for production use.**
 > The API may change before 1.0. The cryptographic construction has **not** been
 > independently audited. Read [`KNOWN-GAPS.md`](KNOWN-GAPS.md) before depending
 > on this for anything that matters.
 
-### What's new in 0.2.0-preview.1
+### What's new in 0.3.0-preview.1
 
-- **Migrate an existing store to Argon2id** with
-  `AddArgon2idPasswordHasherWithMigration<TUser>()` — verifies legacy PBKDF2
-  hashes and transparently rehashes to Argon2id on the next sign-in.
-- **`kid`-based key rotation** — issued tokens carry the configured key id; the
-  demo validates a two-key ring with a `SignatureKeyResolver`.
-- **AOT/trim-clean token issuance** — claims serialize via source-generated
-  `JsonTypeInfo<T>`; the net10 assembly asserts `IsAotCompatible`.
-- **Supply chain** — a CycloneDX SBOM is embedded in the `.nupkg`; CI/release
-  workflows add a PQ-required test lane and build-provenance attestations.
-- **Benchmarks** — a BenchmarkDotNet project for Argon2id work-factor tuning.
-- **Demo** now uses the real `PqJwtBearer` authentication handler (`[Authorize]`).
+- **Known Answer Tests** — Argon2id is checked against the RFC 9106 §5.3
+  reference vector and a reference-`argon2`-CLI PHC string verifies through our
+  hasher (proving spec-correctness + interop).
+- **Token security corpus** — sign-then-encrypt roundtrip, multi-role arrays,
+  reserved-claim protection, and fail-closed rejection of expired / wrong-key /
+  tampered / malformed tokens. ~92% line coverage on net10.
+- **Second sample** — a controller-based MVC API alongside the minimal-API demo.
+- Refreshed docs (getting-started, migration, ADRs). No public API changes from
+  0.2.
+
+Earlier highlights — **0.2:** `MigratingPasswordHasher` (PBKDF2→Argon2id), `kid`
+key rotation, AOT-clean claim path, embedded CycloneDX SBOM, CI/release
+workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 
 ---
 
@@ -57,6 +59,7 @@ exactly what it provides.
 - [60-second tour](#60-second-tour)
 - [Password hashing (all runtimes)](#password-hashing-all-runtimes)
 - [Hybrid tokens (.NET 10)](#hybrid-tokens-net-10)
+- [Try the demo](#try-the-demo)
 - [Public API at a glance](#public-api-at-a-glance)
 - [How it fits the PostQuantum.* family](#how-it-fits-the-postquantum-family)
 - [Security posture](#security-posture)
@@ -91,7 +94,7 @@ hybrid token.
 ```bash
 dotnet add package PostQuantum.Identity --prerelease
 # or pin the exact preview:
-dotnet add package PostQuantum.Identity --version 0.2.0-preview.1
+dotnet add package PostQuantum.Identity --version 0.3.0-preview.1
 ```
 
 Targets `net8.0`, `net9.0`, and `net10.0`. The token features light up on
@@ -215,6 +218,39 @@ bearer handler to slot it into the standard auth pipeline.
 
 ---
 
+## Try the demo
+
+Two runnable samples wire all of this into a real ASP.NET Core app with an
+in-memory store — nothing to install:
+
+- [`samples/PostQuantum.Identity.Demo`](samples/PostQuantum.Identity.Demo) —
+  minimal APIs, `PqJwtBearer` `[Authorize]`, and `kid`-based key rotation.
+- [`samples/PostQuantum.Identity.Mvc.Demo`](samples/PostQuantum.Identity.Mvc.Demo) —
+  the same wiring with controller-based MVC.
+
+```bash
+# One command. (LD_LIBRARY_PATH is only needed where the system OpenSSL
+# predates 3.5 — password hashing works regardless.)
+LD_LIBRARY_PATH=/opt/conda/lib ASPNETCORE_URLS=http://localhost:5199 \
+  dotnet run --project samples/PostQuantum.Identity.Demo
+```
+
+```bash
+# In another terminal:
+curl -s -X POST localhost:5199/register -H 'Content-Type: application/json' \
+  -d '{"username":"ada","password":"Lovelace#1843"}'
+
+TOKEN=$(curl -s -X POST localhost:5199/login -H 'Content-Type: application/json' \
+  -d '{"username":"ada","password":"Lovelace#1843"}' | jq -r .token)
+
+curl -s localhost:5199/me -H "Authorization: Bearer $TOKEN"
+# -> { "subject": "...", "name": "ada", "roles": [] }
+```
+
+Register hashes the password with Argon2id; login returns an ML-DSA-65–signed
+post-quantum token; `/me` is validated by the `PqJwtBearer` handler. A wrong
+password or a tampered token returns `401` — fail-closed.
+
 ## Public API at a glance
 
 | Type | Runtime | Purpose |
@@ -261,6 +297,9 @@ PostQuantum.Identity is the ASP.NET Core Identity layer of a broader family:
   ML-DSA / ML-KEM come from the native .NET BCL via PostQuantum.Jwt.
 - **Key management is yours.** This library never generates, stores, or rotates
   signing keys for you.
+- **Tested against the spec.** Argon2id is checked against the RFC 9106 §5.3
+  reference vector and a reference-`argon2`-CLI PHC string; the token surface has
+  a fail-closed corpus (expiry, wrong key, per-segment tamper, malformed input).
 
 Full detail in [`SECURITY.md`](SECURITY.md). Honest list of what is **not** done
 yet in [`KNOWN-GAPS.md`](KNOWN-GAPS.md).

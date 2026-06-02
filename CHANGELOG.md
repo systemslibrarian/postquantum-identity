@@ -4,6 +4,33 @@ All notable changes to PostQuantum.Identity are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/), and the project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0-preview.1] — 2026-06-02
+
+A polish and assurance release. No public API changes from 0.2 — this hardens
+testing, documentation, and samples toward a 10/10 bar.
+
+### Added
+
+- **Known Answer Tests for Argon2id:** the RFC 9106 §5.3 reference vector
+  (keyed + associated-data path) and the canonical reference-CLI PHC string
+  (`argon2 somesalt -id -t 2 -m 16 -p 1`) verified through our hasher — proving
+  the engine is spec-correct and our PHC parsing interoperates with standard
+  tooling.
+- **Token security/validation corpus** (net10): sign-then-encrypt (X-Wing)
+  roundtrip, multi-role JSON-array claims, reserved-claim override protection,
+  and fail-closed rejection of expired / wrong-key / per-segment-tampered /
+  malformed tokens.
+- **`Argon2idOptions` validation tests** covering every out-of-range branch, the
+  defensive-copy guarantee, and salt-size-driven rehash.
+- **Second sample:** `samples/PostQuantum.Identity.Mvc.Demo` — a controller-based
+  MVC API using the same Argon2id + PqJwtBearer wiring.
+
+### Changed
+
+- net10 line coverage is now ~92% (60 tests on net10; 43 on net8/net9).
+- Documentation refreshed (README getting-started/migration/demo sections,
+  KNOWN-GAPS).
+
 ## [0.2.0-preview.1] — 2026-06-02
 
 The v0.2 roadmap, delivered. Builds on the 0.1 surface; no breaking changes to
@@ -79,5 +106,6 @@ Initial preview.
 - Issued tokens use non-IANA JOSE identifiers and are intentionally
   non-interoperable with generic JWT tooling.
 
+[0.3.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.3.0-preview.1
 [0.2.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.2.0-preview.1
 [0.1.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.1.0-preview.1

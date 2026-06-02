@@ -1,0 +1,101 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The Argon2id password hashing surface targets all three LTS/STS lines.
+         The PostQuantum.Jwt hybrid-token integration is net10.0-only because the
+         BCL post-quantum primitives (ML-DSA/ML-KEM) and PostQuantum.Jwt itself
+         ship for .NET 10. That code is gated behind #if NET10_0_OR_GREATER and a
+         conditional package reference — see Tokens/ and KNOWN-GAPS.md. -->
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.Identity</RootNamespace>
+    <AssemblyName>PostQuantum.Identity</AssemblyName>
+    <!-- The net10 token surface serializes claims via source-generated
+         JsonTypeInfo<T> (PostQuantumIdentityJsonContext) and PostQuantum.Jwt's
+         typed WithClaim<T> overload, so it is trim/AOT-clean. The Argon2id path
+         (Konscious + Identity.Core) raises no trim warnings for our usage either.
+         Asserted on net10 only — the trim/AOT analyzers ship with that SDK band. -->
+    <IsAotCompatible Condition="'$(TargetFramework)' == 'net10.0'">true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>PostQuantum.Identity</PackageId>
+    <Version>0.2.0-preview.1</Version>
+    <Title>PostQuantum.Identity — post-quantum ASP.NET Core Identity</Title>
+    <Authors>Paul Clark</Authors>
+    <Description>Post-quantum integration for ASP.NET Core Identity. Hashes passwords with Argon2id (PHC-formatted, secure-by-default work factors, transparent rehash-on-login) and issues post-quantum hybrid JWTs for authenticated users via PostQuantum.Jwt — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption. Drops into the standard Identity builder chain. Argon2id hashing runs on net8.0/net9.0/net10.0; the hybrid-token integration requires .NET 10. Preview release — not for production use.</Description>
+    <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-identity</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/postquantum-identity</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>aspnetcore;identity;password-hashing;argon2;argon2id;jwt;post-quantum;pqc;ml-dsa;ml-kem;x-wing;hybrid;authentication;cryptography;security;fips-204;net8;net9;net10</PackageTags>
+    <PackageReleaseNotes>0.2.0-preview.1: Adds a MigratingPasswordHasher&lt;TUser&gt; (verifies legacy PBKDF2 and rehashes to Argon2id on next login) with AddArgon2idPasswordHasherWithMigration; kid-stamped tokens for key rotation; an AOT/trim-clean claim path (source-generated JsonTypeInfo, IsAotCompatible on net10); a CycloneDX SBOM embedded in the package; CI/release workflows with a PQ-required test lane and build-provenance; and a BenchmarkDotNet project. Still preview — NOT independently audited, NOT for production. See KNOWN-GAPS.md. 0.1.0-preview.1: Initial preview — Argon2id IPasswordHasher&lt;TUser&gt; (net8/9/10) + PostQuantum.Jwt hybrid-token service (net10).</PackageReleaseNotes>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright © Paul Clark</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
+  </PropertyGroup>
+
+  <!-- Symbols + SourceLink for debuggable, reproducible packages. -->
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Argon2id implementation (Argon2 1.3 spec, PHC winner). Used on every TFM. -->
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <!-- Framework-agnostic ASP.NET Core Identity core: IPasswordHasher<TUser>,
+         PasswordHasher<TUser>, IdentityBuilder, UserManager<TUser>. No EF / web host pulled in. -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- Hybrid-token integration: PostQuantum.Jwt + BCL PQC ship for .NET 10 only. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="PostQuantum.Jwt" Version="1.0.0-preview.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Generate a CycloneDX SBOM (bom.json) inside the package on every Pack.
+       Requires the `dotnet-CycloneDX` global tool (one-time install via
+       `dotnet tool install` with the `global` flag and id `CycloneDX`). If the
+       tool isn't present (e.g. a fresh dev machine), pack continues without the
+       SBOM rather than failing; the release workflow installs the tool
+       unconditionally, so CI always produces the SBOM.
+
+       The bom.json is added via an in-target ItemGroup because
+       $(IntermediateOutputPath)bom.json doesn't exist when a static <None Include>
+       would be evaluated. Pinned to the net10.0 graph so the tool runs once. -->
+  <Target Name="GenerateCycloneDxSbom"
+          BeforeTargets="GenerateNuspec;_GetPackageFiles"
+          Condition="'$(IsPackable)' != 'false' and '$(SbomDisabled)' != 'true'">
+    <!-- IMPORTANT: the disable-package-restore flag is required. CycloneDX
+         otherwise runs its own restore, and on a multi-targeted project that
+         rewrites obj/project.assets.json to a single TFM, which then collapses
+         the per-TFM dependency groups in the generated .nuspec (NU5128) and would
+         drop transitive deps for net8.0/net9.0 consumers. With restore disabled
+         it reads the existing multi-TFM assets and aggregates all frameworks. -->
+    <Exec Command="dotnet CycloneDX &quot;$(MSBuildProjectFullPath)&quot; --disable-package-restore --output &quot;$(IntermediateOutputPath.TrimEnd('\').TrimEnd('/'))&quot; --filename bom.json --json"
+          IgnoreExitCode="true"
+          ContinueOnError="WarnAndContinue">
+      <Output TaskParameter="ExitCode" PropertyName="_CycloneDxExitCode" />
+    </Exec>
+    <Message Importance="high"
+             Text="CycloneDX SBOM not generated (tool missing or failed, exit=$(_CycloneDxExitCode)). Install with: `dotnet tool install` (global, id=CycloneDX)."
+             Condition="'$(_CycloneDxExitCode)' != '0'" />
+    <ItemGroup Condition="Exists('$(IntermediateOutputPath)bom.json')">
+      <None Include="$(IntermediateOutputPath)bom.json" Pack="true" PackagePath="\" />
+    </ItemGroup>
+    <Message Importance="high"
+             Text="CycloneDX SBOM packed into .nupkg at /bom.json"
+             Condition="Exists('$(IntermediateOutputPath)bom.json')" />
+  </Target>
+
+</Project>

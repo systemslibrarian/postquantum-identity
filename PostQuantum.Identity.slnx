@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/PostQuantum.Identity.Benchmarks/PostQuantum.Identity.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/PostQuantum.Identity.Demo/PostQuantum.Identity.Demo.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PostQuantum.Identity/PostQuantum.Identity.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PostQuantum.Identity.Tests/PostQuantum.Identity.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- The hybrid-token features require .NET 10 (PostQuantum.Jwt + BCL PQC). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The BCL ML-DSA SubjectPublicKeyInfo round-trip is still flagged
+         experimental in .NET 10; the demo opts in knowingly. -->
+    <NoWarn>$(NoWarn);SYSLIB5006</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Real ASP.NET Core Identity stores, backed by an in-memory EF database so
+         the sample runs with zero external setup. -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <!-- The PqJwtBearer authentication handler — validates the post-quantum
+         tokens this app issues, with kid-based key resolution for rotation. -->
+    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0-preview.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PostQuantum.Identity/PostQuantum.Identity.csproj" />
+  </ItemGroup>
+
+</Project>

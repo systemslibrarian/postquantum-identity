@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit's analyzer occasionally flags patterns we use intentionally in
+         tests; keep the repo-wide warnings-as-errors but don't let test-only
+         doc warnings fail the build. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- CS1591: tests aren't doc'd. CA1707: snake_case test names are idiomatic.
+         SYSLIB5006: the BCL ML-DSA SubjectPublicKeyInfo import is still marked
+         experimental in .NET 10; the test opts into it knowingly. -->
+    <NoWarn>$(NoWarn);CS1591;CA1707;SYSLIB5006</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PostQuantum.Identity/PostQuantum.Identity.csproj" />
+  </ItemGroup>
+
+</Project>

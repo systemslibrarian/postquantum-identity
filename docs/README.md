@@ -6,6 +6,10 @@ Design notes and pointers for PostQuantum.Identity.
 
 - [Project README](../README.md) — overview, install, usage, API table.
 - [MIGRATION.md](MIGRATION.md) — moving an existing store from PBKDF2 to Argon2id.
+- [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) — auditor-facing independent verification guide.
+- [THREAT-MODEL.md](THREAT-MODEL.md) — STRIDE per surface with per-threat code/test pointers.
+- [SECURITY-REVIEW-CHECKLIST.md](SECURITY-REVIEW-CHECKLIST.md) — auditor index to every claim with file/line/test backings.
+- [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md) — go-live signoff checklist.
 - [Architecture Decision Records](adr/) — why the library is shaped the way it is.
 - [SECURITY.md](../SECURITY.md) — threat model and cryptographic construction.
 - [KNOWN-GAPS.md](../KNOWN-GAPS.md) — honest list of what is not done yet.

@@ -5,7 +5,7 @@ what is unverified, and where the sharp edges are. Honesty over polish: if
 something is incomplete, it is listed here rather than glossed over. This file
 is part of the contract with anyone evaluating the library.
 
-Last reviewed for: `0.3.0-preview.1` (2026-06-02).
+Last reviewed for: `0.5.0-preview.1` (2026-06-03).
 
 ## Maturity — split by surface
 
@@ -13,16 +13,17 @@ PostQuantum.Identity ships two surfaces with deliberately different stances:
 
 - **Argon2id password hashing** (`net8` / `net9` / `net10`): implemented to
   production discipline, RFC 9106 §5.3 KAT-pinned, fail-closed, vetted
-  dependency. Suitable for production adoption today.
-- **Hybrid post-quantum tokens** (`net10` only): preview, suitable for
-  **owned / trusted ecosystems** where you own the issuer and every verifier.
-  Not for public-internet OIDC. Pending: upstream PostQuantum.Jwt 1.0, IETF
-  JOSE PQC drafts settling, third-party audit.
+  dependency. **Suitable for production adoption today.**
+- **Hybrid post-quantum tokens** (`net10` only): production-quality code for
+  **owned / trusted ecosystems** where you own the issuer and every
+  verifier. Not appropriate for public-internet OIDC. Pending: upstream
+  PostQuantum.Jwt 1.0, IETF JOSE PQC drafts settling, third-party audit.
 
-The "preview" label on the package as a whole reflects the more conservative
-of the two surfaces; the [`Roadmap to 1.0`](README.md#roadmap-to-10) in the
-README lists every gate that has to close before the version stops carrying
-`-preview.N`.
+The `-preview.N` label on the package as a whole reflects honest semver
+discipline against the [`Roadmap to 1.0`](README.md#roadmap-to-10) gates —
+most of which are external signals (upstream releases, RFCs, audits) rather
+than missing engineering in this repo. The version label is conservative on
+purpose, not because the code beneath is half-finished.
 
 ### Cross-cutting
 

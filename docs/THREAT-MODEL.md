@@ -6,8 +6,10 @@ explicitly out of scope. Reviewers and security teams should read this in
 addition to [`SECURITY.md`](../SECURITY.md) and [`KNOWN-GAPS.md`](../KNOWN-GAPS.md).
 
 This model covers **two surfaces** at different maturity levels — the
-production-ready Argon2id password hasher and the preview hybrid
-post-quantum token issuer. Threats are listed per surface.
+production-ready Argon2id password hasher (any owned deployment) and the
+production-ready-for-owned-ecosystems hybrid post-quantum token issuer
+(service-to-service inside one fleet, internal B2B, mTLS-bracketed APIs).
+Threats are listed per surface.
 
 ## Assets the library helps protect
 
@@ -144,6 +146,7 @@ in your application or platform.
 | Version | Reviewed by | Date | Outcome |
 |---|---|---|---|
 | `0.3.0-preview.1` | internal — Paul Clark | 2026-06-02 | Documented; no third-party audit yet |
+| `0.5.0-preview.1` | internal — Paul Clark | 2026-06-03 | Re-reviewed; no scope changes; production-readiness polish only |
 
 Independent third-party review is one of the [`Roadmap to 1.0`](../README.md#roadmap-to-10) gates.
 

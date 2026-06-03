@@ -66,9 +66,10 @@ if (signingKey is not null)
     identity.AddPostQuantumTokens<IdentityUser>(o =>
     {
         o.SigningKey = signingKey;
-        o.KeyId = "mvc-demo-1";
+        o.KeyId = TokenConstants.CurrentKeyId;
         o.Issuer = TokenConstants.Issuer;
         o.Audience = TokenConstants.Audience;
+        o.Lifetime = TokenConstants.Lifetime;
     });
 
     builder.Services
@@ -125,6 +126,10 @@ internal static class TokenConstants
     public const string Issuer = "https://demo.postquantum-identity.local";
     public const string Audience = "api://mvc-demo";
     public const string CurrentKeyId = "mvc-demo-1";
+
+    /// <summary>Token lifetime — single source of truth so login/refresh
+    /// responses can advertise <c>expires_in</c> without drifting.</summary>
+    public static readonly TimeSpan Lifetime = TimeSpan.FromHours(1);
 }
 
 /// <summary>EF Core Identity store for the demo (in-memory).</summary>

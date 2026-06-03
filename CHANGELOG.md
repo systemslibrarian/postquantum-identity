@@ -4,6 +4,53 @@ All notable changes to PostQuantum.Identity are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/), and the project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0-preview.1] — 2026-06-03
+
+A final production-readiness polish release on top of 0.3. **No public API
+changes; no behavior changes** — the deltas are all in framing, docs, and
+the auditor-facing surface.
+
+### Added
+
+- **`docs/SUPPLY-CHAIN.md`** — auditor-facing companion to the README's
+  three-command verify. Includes a chain-of-custody diagram from tag-push
+  to `gh attestation verify`, a per-arrow verification table, the full
+  `release.yml` hygiene checklist (OIDC, deterministic build, CycloneDX
+  with the load-bearing `--disable-package-restore` flag, per-`.nupkg`
+  attestation, `SHA256SUMS.txt`, gated publish, optional author signing),
+  a reproducibility recipe, SHA-256 cross-check guidance, and an explicit
+  "what this does NOT prove" honesty section.
+
+### Changed
+
+- **README — leading production-readiness banner.** New "Production-ready
+  for owned and trusted ecosystems" callout above the split-surface table.
+  Both rows in that table now describe the surface as production-ready
+  rather than preview, with the token surface gated on "you own both the
+  issuer and every verifier."
+- **README — Roadmap to 1.0 gates re-framed.** Each gate is annotated with
+  the surface it blocks (Argon2id / tokens / both) and the introduction
+  states that most gates are external signals (upstream releases, RFCs,
+  audits) rather than missing engineering. Closes the gap between "the
+  code is production-discipline" and "the version says `-preview.N`."
+- **README — supply-chain section renamed** to "How to verify this package
+  (supply chain — three commands)" so auditors can find it cold; the body
+  cross-references the new `docs/SUPPLY-CHAIN.md` companion.
+- **`SECURITY.md` honesty statement** and **`KNOWN-GAPS.md` maturity
+  preface** reworded to match the new production-readiness lead. Both now
+  state explicitly that the `-preview.N` suffix reflects honest semver
+  discipline against the Roadmap gates, not the engineering quality.
+- **MVC demo** (`samples/PostQuantum.Identity.Mvc.Demo`) — token `Lifetime`
+  lifted into a `TokenConstants.Lifetime` source-of-truth; login and
+  refresh responses now surface `expires_in` for parity with the
+  minimal-API demo.
+
+### Repo hygiene
+
+- **`.gitignore` hardened against secret leaks.** `nuget.key` /
+  `nuget.key.*` / `*.nuget.key` are now explicitly excluded so a stray
+  local API-key file at the repo root can never be committed.
+
 ## [0.3.0-preview.1] — 2026-06-02
 
 A polish and assurance release. No public API changes from 0.2 — this hardens
@@ -205,6 +252,7 @@ Initial preview.
 - Issued tokens use non-IANA JOSE identifiers and are intentionally
   non-interoperable with generic JWT tooling.
 
+[0.5.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.5.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.3.0-preview.1
 [0.2.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.2.0-preview.1
 [0.1.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.1.0-preview.1

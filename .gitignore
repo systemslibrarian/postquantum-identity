@@ -9,6 +9,11 @@ artifacts/
 # NuGet
 *.nupkg
 *.snupkg
+# Local NuGet API key — NEVER commit. The release workflow uses a GitHub secret
+# instead. This pattern catches both nuget.key and nuget.key.txt at repo root.
+nuget.key
+nuget.key.*
+*.nuget.key
 
 # IDE
 .vs/

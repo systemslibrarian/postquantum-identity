@@ -5,28 +5,35 @@ and this document is honest about that:
 
 - The **Argon2id password-hashing surface** is implemented to production
   discipline (RFC 9106 KAT-pinned, fail-closed, constant-time tag compare,
-  vetted dependency). It is suitable for production adoption today.
-- The **hybrid post-quantum token surface** is preview, appropriate for
-  **owned / trusted ecosystems** (you control issuer and every verifier),
-  not for public-internet OIDC. It depends on
+  vetted dependency). **Suitable for production adoption today**, on every
+  supported runtime (net8 / net9 / net10).
+- The **hybrid post-quantum token surface** is production-quality code
+  appropriate for **owned / trusted ecosystems** (you control the issuer
+  and every verifier) — service-to-service inside one fleet, internal B2B,
+  mTLS-bracketed APIs. **Not** appropriate for public-internet OIDC until
+  the IETF JOSE PQC drafts land and
   [PostQuantum.Jwt](https://github.com/systemslibrarian/postquantum-jwt)
-  while that package and the IETF JOSE PQC drafts mature.
+  picks up the standardized identifiers.
 
 Neither half has been independently audited. The
 [`KNOWN-GAPS.md`](KNOWN-GAPS.md) file enumerates everything that is
 unfinished, unverified, or deliberately out of scope, and is updated in
-lockstep with the code. Read it before depending on this library.
+lockstep with the code. Read it before depending on this library. The
+`-preview.N` suffix on the package version reflects honest semver discipline
+against the Roadmap-to-1.0 gates in the README, not the engineering quality
+of the code itself.
 
 ## Supported versions
 
 | Version             | Supported           |
 |---------------------|---------------------|
-| `0.3.0-preview.*`   | ✅ (latest preview)  |
+| `0.5.0-preview.*`   | ✅ (latest preview)  |
+| `0.3.0-preview.*`   | ❌ (superseded)      |
 | `0.2.0-preview.*`   | ❌ (superseded)      |
 | `0.1.0-preview.*`   | ❌ (superseded)      |
 | anything older      | ❌                  |
 
-During the `0.3.0-preview.*` series only the most recent preview receives fixes.
+During the `0.5.0-preview.*` series only the most recent preview receives fixes.
 
 ## Reporting a vulnerability
 
@@ -161,7 +168,7 @@ deployment so you can make an honest call with your compliance team.
 
 ### Cryptographic-primitive certification status
 
-| Primitive | Used for | FIPS status (as of 2026-06-02) |
+| Primitive | Used for | FIPS status (as of 2026-06-03) |
 |---|---|---|
 | **Argon2id** | Password hashing | **Not FIPS-approved.** Argon2 is not a NIST-published primitive. If your policy requires FIPS-only password verifiers, you'll use a PBKDF2 / Argon2 combination or stay on PBKDF2 — Argon2id sits outside the boundary regardless of who implements it. |
 | **ML-DSA-65 (FIPS 204)** | Token signature | **NIST-standardized as FIPS 204** (Aug 2024). The .NET 10 BCL ML-DSA implementation's certification status is **TBD** at Microsoft's side — track [Microsoft's FIPS 140 documentation](https://learn.microsoft.com/dotnet/standard/security/fips-compliance) for the current cert state. |
@@ -241,15 +248,17 @@ track it.
 
 ## Honesty statement
 
-This is preview software written in the open. It has **not** been
-independently audited.
+This is software written in the open and labelled with an honest semver
+preview suffix. It has **not** been independently audited.
 
 The Argon2id surface is implemented to production discipline and is
-appropriate for production adoption today. The hybrid-token surface is the
-right tool for **owned / trusted ecosystems** (where you control both the
-issuer and every verifier) and is not appropriate for public-internet OIDC
-or any boundary that needs generic-JWT-tooling interoperability — the
-`alg = ML-DSA-65` identifier is non-IANA on purpose.
+appropriate for production adoption today. The hybrid-token surface is
+production-quality code for **owned / trusted ecosystems** (where you control
+both the issuer and every verifier); it is not appropriate for
+public-internet OIDC or any boundary that needs generic-JWT-tooling
+interoperability — the `alg = ML-DSA-65` identifier is non-IANA on purpose,
+inherited from upstream PostQuantum.Jwt, and will become standards-aligned
+through a normal upstream version bump when the IETF JOSE PQC drafts land.
 
 Until a 1.0 release and an external review, every limitation is enumerated
 in [`KNOWN-GAPS.md`](KNOWN-GAPS.md) and the

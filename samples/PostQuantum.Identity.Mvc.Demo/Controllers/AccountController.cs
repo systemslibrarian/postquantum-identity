@@ -70,7 +70,14 @@ public sealed class AccountController(
         }
 
         string token = await tokens.CreateTokenAsync(user);
-        return Ok(new { token, token_type = "PQ-JWT", alg = "ML-DSA-65", kid = TokenConstants.CurrentKeyId });
+        return Ok(new
+        {
+            token,
+            token_type = "PQ-JWT",
+            alg = "ML-DSA-65",
+            kid = TokenConstants.CurrentKeyId,
+            expires_in = (int)TokenConstants.Lifetime.TotalSeconds,
+        });
     }
 
     /// <summary>
@@ -112,6 +119,7 @@ public sealed class AccountController(
             token_type = "PQ-JWT",
             alg = "ML-DSA-65",
             kid = TokenConstants.CurrentKeyId,
+            expires_in = (int)TokenConstants.Lifetime.TotalSeconds,
             rotated_from = oldJti,
         });
     }

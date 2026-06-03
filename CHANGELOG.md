@@ -57,6 +57,38 @@ testing, documentation, and samples toward a 10/10 bar.
 - **MIGRATION.md — "What you can promise stakeholders before shipping"**
   operational checklist: zero forced resets, no migration job, reversible,
   fail-closed, no new persisted state, single dep.
+- **Opinionated `Argon2idOptions` presets** — four named factory methods
+  (`RecommendedDefault()`, `OwaspMinimum()`, `HighSecurity()`,
+  `LowMemoryContainer()`) cover the realistic environment classes without
+  hand-tuning. Each is KAT-asserted to match its published profile.
+- **One-line preset DI overloads** — `AddArgon2idPasswordHasher<TUser>(preset)`
+  and `AddArgon2idPasswordHasherWithMigration<TUser>(preset)` on both
+  `IServiceCollection` and `IdentityBuilder`. Values are snapshotted at
+  registration time, so a caller mutating their preset reference between
+  `services.Add…` and `app.Build()` cannot silently weaken the hasher.
+- **Startup-time options validation** — DI now registers
+  `IValidateOptions<Argon2idOptions>` (and, on net10,
+  `IValidateOptions<PostQuantumTokenOptions>`), so a misconfigured work
+  factor or missing `SigningKey` fails when the host starts with a message
+  naming the offending property, instead of throwing at first hash / first
+  login.
+- **Production-scenario test corpus** — concurrent verification correctness,
+  per-axis rehash-threshold theory (memory / iterations / parallelism / salt
+  / tag), and an adversarial PHC corpus (variant casing, segment-count
+  attacks, embedded whitespace, base64 attacks, path-traversal noise, raw
+  junk) all proving `TryParse` stays fail-closed.
+- **UserManager-based migration integration tests** — full
+  PBKDF2-seeded → `CheckPasswordAsync` → row-rewrites-to-Argon2id cycle
+  through a real `UserManager`, plus a no-rewrite-on-wrong-password
+  regression and a new-users-hash-Argon2id-immediately check.
+- **DoS protection wired into both samples** — fixed-window IP-partition
+  rate limiter on `/register`, `/login`, `/refresh` (10 reqs / 30 s). Smoke-
+  tested: returns 429 after the budget, matching the documented policy.
+- **IETF JOSE PQC alignment subsection** in the README explaining where the
+  `alg = ML-DSA-65` identifier comes from (upstream PostQuantum.Jwt, not
+  this package), why it's intentionally non-IANA today (drafts in flight),
+  and how cross-ecosystem verification will land via a normal upstream
+  version bump with no PostQuantum.Identity API change.
 
 ### Changed
 

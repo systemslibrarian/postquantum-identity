@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PostQuantum.Identity.Tokens;
 
 namespace PostQuantum.Identity.Mvc.Demo.Controllers;
@@ -13,6 +14,7 @@ namespace PostQuantum.Identity.Mvc.Demo.Controllers;
 /// </summary>
 [ApiController]
 [Route("account")]
+[EnableRateLimiting("auth")] // Asymmetric DoS mitigation on the Argon2id-heavy + PQ-token endpoints.
 public sealed class AccountController(
     UserManager<IdentityUser> users,
     IPostQuantumTokenService<IdentityUser>? tokens,

@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PostQuantum.Identity.DependencyInjection;
 using PostQuantum.Jwt;
@@ -25,6 +27,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<DemoIdentityContext>(o => o.UseInMemoryDatabase("pq-identity-mvc-demo"));
+
+// Asymmetric DoS mitigation for the Argon2id-heavy and token-issuance endpoints.
+// Same fixed-window IP partition policy as the minimal-API demo; apply via
+// [EnableRateLimiting("auth")] on the action methods that hit those costs.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromSeconds(30),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0,
+        }));
+});
 
 IdentityBuilder identity = builder.Services
     .AddIdentityCore<IdentityUser>(o => o.Password.RequiredLength = 8)
@@ -64,6 +83,7 @@ if (signingKey is not null)
 WebApplication app = builder.Build();
 
 app.UseStatusCodePages();
+app.UseRateLimiter();
 
 if (signingKey is not null)
 {

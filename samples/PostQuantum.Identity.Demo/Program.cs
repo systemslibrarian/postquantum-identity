@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PostQuantum.Identity.DependencyInjection;
 using PostQuantum.Identity.Tokens;
@@ -48,6 +50,26 @@ builder.Services.AddDbContext<DemoIdentityContext>(o => o.UseInMemoryDatabase("p
 
 // Centralized ProblemDetails so error responses are RFC 7807-shaped and consistent.
 builder.Services.AddProblemDetails();
+
+// Asymmetric DoS mitigation. Argon2id and ML-DSA-65 are deliberately expensive
+// by design, so an attacker spamming bogus /login or /refresh calls can burn
+// disproportionate server CPU. The "auth" policy caps each remote IP to 10
+// requests per 30 s on those endpoints. Real deployments should pair this
+// with edge-level limits (CDN / API gateway / WAF) — this is the in-process
+// last line of defense, not the whole story.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromSeconds(30),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0,
+        }));
+});
 
 IdentityBuilder identity = builder.Services
     .AddIdentityCore<IdentityUser>(o =>
@@ -114,6 +136,7 @@ if (MLDsa.IsSupported)
 var app = builder.Build();
 
 app.UseStatusCodePages();
+app.UseRateLimiter();
 
 if (MLDsa.IsSupported)
 {
@@ -177,7 +200,7 @@ app.MapPost("/register", async (Credentials creds, UserManager<IdentityUser> use
         result.Errors.GroupBy(e => e.Code).ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray()),
         title: "Registration failed",
         statusCode: StatusCodes.Status400BadRequest);
-});
+}).RequireRateLimiting("auth");
 
 // --- Login ---------------------------------------------------------------
 // Verifies the password (Argon2id, fail-closed) and issues a fresh PQ-JWT.
@@ -217,7 +240,7 @@ app.MapPost("/login", async (
         kid = CurrentKeyId,
         expires_in = (int)TokenLifetime.TotalSeconds,
     });
-});
+}).RequireRateLimiting("auth");
 
 // --- Refresh -------------------------------------------------------------
 // Issues a new token for the current authenticated subject. The classic
@@ -262,7 +285,7 @@ app.MapPost("/refresh", [Authorize] async (
         expires_in = (int)TokenLifetime.TotalSeconds,
         rotated_from = oldJti,
     });
-});
+}).RequireRateLimiting("auth");
 
 // --- Logout --------------------------------------------------------------
 // Adds the current token's jti to the revocation list so it cannot be used

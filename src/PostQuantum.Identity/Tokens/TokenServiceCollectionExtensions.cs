@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using PostQuantum.Identity.Tokens;
 
 namespace PostQuantum.Identity.DependencyInjection;
@@ -36,6 +37,12 @@ public static class TokenServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configureOptions);
 
         services.AddOptions<PostQuantumTokenOptions>().Configure(configureOptions);
+
+        // Startup-time validation: misconfigured tokens fail when the host
+        // starts (e.g. a missing SigningKey), not on the first /login call.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<PostQuantumTokenOptions>, PostQuantumTokenOptionsValidator>());
+
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IPostQuantumTokenService<TUser>, PostQuantumTokenService<TUser>>();
         return services;
@@ -62,6 +69,30 @@ public static class TokenServiceCollectionExtensions
         IdentityBuilderExtensions.EnsureUserTypeMatches<TUser>(builder);
         builder.Services.AddPostQuantumTokenService<TUser>(configureOptions);
         return builder;
+    }
+}
+
+/// <summary>
+/// Startup-time validator for <see cref="PostQuantumTokenOptions"/>. Surfaces
+/// a misconfiguration when the host starts (e.g. missing SigningKey, empty
+/// Issuer/Audience), not on the first /login call.
+/// </summary>
+internal sealed class PostQuantumTokenOptionsValidator : IValidateOptions<PostQuantumTokenOptions>
+{
+    /// <inheritdoc />
+    public ValidateOptionsResult Validate(string? name, PostQuantumTokenOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        try
+        {
+            options.Validate();
+            return ValidateOptionsResult.Success;
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ValidateOptionsResult.Fail(
+                "PostQuantumTokenOptions misconfigured at startup: " + ex.Message);
+        }
     }
 }
 #endif

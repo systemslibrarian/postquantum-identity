@@ -43,6 +43,41 @@ public static class IdentityBuilderExtensions
     }
 
     /// <summary>
+    /// Registers the Argon2id hasher using a named work-factor preset from
+    /// <see cref="Argon2idOptions"/> (e.g. <see cref="Argon2idOptions.HighSecurity"/>).
+    /// One-line ergonomics for the most common environment classes.
+    /// </summary>
+    /// <typeparam name="TUser">The Identity user type.</typeparam>
+    /// <param name="builder">The Identity builder being configured.</param>
+    /// <param name="preset">
+    /// A preset instance from <see cref="Argon2idOptions"/>'s factory methods.
+    /// Its values are copied; later mutation does not affect the registration.
+    /// </param>
+    /// <returns>The same <paramref name="builder"/>, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <typeparamref name="TUser"/> does not match the user type of <paramref name="builder"/>.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// builder.Services
+    ///     .AddIdentityCore&lt;IdentityUser&gt;()
+    ///     .AddArgon2idPasswordHasher&lt;IdentityUser&gt;(Argon2idOptions.HighSecurity());
+    /// </code>
+    /// </example>
+    public static IdentityBuilder AddArgon2idPasswordHasher<TUser>(
+        this IdentityBuilder builder,
+        Argon2idOptions preset)
+        where TUser : class
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(preset);
+        EnsureUserTypeMatches<TUser>(builder);
+        builder.Services.AddArgon2idPasswordHasher<TUser>(preset);
+        return builder;
+    }
+
+    /// <summary>
     /// Registers a <see cref="MigratingPasswordHasher{TUser}"/>: Argon2id for new
     /// hashes, with the stock ASP.NET Core Identity PBKDF2 hasher verifying (and
     /// triggering re-hash of) any legacy stored hash. The recommended adapter when
@@ -67,6 +102,31 @@ public static class IdentityBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
         EnsureUserTypeMatches<TUser>(builder);
         builder.Services.AddArgon2idPasswordHasherWithMigration<TUser>(configureOptions);
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers the migrating Argon2id hasher using a named work-factor preset
+    /// from <see cref="Argon2idOptions"/>. One-line ergonomics for the common
+    /// "migrate PBKDF2 → Argon2id with stronger defaults" path.
+    /// </summary>
+    /// <typeparam name="TUser">The Identity user type.</typeparam>
+    /// <param name="builder">The Identity builder being configured.</param>
+    /// <param name="preset">A preset instance from <see cref="Argon2idOptions"/>'s factory methods.</param>
+    /// <returns>The same <paramref name="builder"/>, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <typeparamref name="TUser"/> does not match the user type of <paramref name="builder"/>.
+    /// </exception>
+    public static IdentityBuilder AddArgon2idPasswordHasherWithMigration<TUser>(
+        this IdentityBuilder builder,
+        Argon2idOptions preset)
+        where TUser : class
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(preset);
+        EnsureUserTypeMatches<TUser>(builder);
+        builder.Services.AddArgon2idPasswordHasherWithMigration<TUser>(preset);
         return builder;
     }
 

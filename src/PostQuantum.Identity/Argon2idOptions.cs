@@ -58,7 +58,80 @@ public sealed record Argon2idOptions
     /// <summary>
     /// The library's recommended defaults. Equivalent to <c>new Argon2idOptions()</c>.
     /// </summary>
+    /// <remarks>
+    /// This is a <em>shared</em> instance for the AppDomain — do not mutate it, or
+    /// every later caller picks up your change. Prefer one of the factory methods
+    /// (<see cref="RecommendedDefault"/>, <see cref="OwaspMinimum"/>,
+    /// <see cref="HighSecurity"/>, <see cref="LowMemoryContainer"/>) when you want
+    /// a private, mutable instance.
+    /// </remarks>
     public static Argon2idOptions Recommended { get; } = new();
+
+    /// <summary>
+    /// Returns a fresh instance of the library's recommended defaults
+    /// (64 MiB, t=3, p=1, 16-byte salt, 32-byte tag). Equivalent in values to
+    /// <see cref="Recommended"/>, but mutable and not shared.
+    /// </summary>
+    /// <remarks>
+    /// Follows the RFC 9106 second recommended profile shape and exceeds the
+    /// OWASP minimum. Right default for most server workloads.
+    /// </remarks>
+    public static Argon2idOptions RecommendedDefault() => new();
+
+    /// <summary>
+    /// Returns the OWASP 2024 minimum Argon2id profile: 19 MiB (<c>m=19456</c>),
+    /// <c>t=2</c>, <c>p=1</c>, 16-byte salt, 32-byte tag.
+    /// </summary>
+    /// <remarks>
+    /// Use for very-latency-sensitive endpoints or modest hardware where the
+    /// recommended default is too expensive. Above this minimum, raise either
+    /// memory or iterations — preferably memory.
+    /// </remarks>
+    public static Argon2idOptions OwaspMinimum() => new()
+    {
+        MemorySizeKib = 19456,
+        Iterations = 2,
+        DegreeOfParallelism = 1,
+        SaltSizeBytes = 16,
+        HashSizeBytes = 32,
+    };
+
+    /// <summary>
+    /// Returns a stronger, latency-tolerant profile: 128 MiB (<c>m=131072</c>),
+    /// <c>t=4</c>, <c>p=1</c>, 16-byte salt, 32-byte tag.
+    /// </summary>
+    /// <remarks>
+    /// Right pick for admin consoles, key-derivation paths, or any endpoint
+    /// where users are happy to wait an extra fraction of a second for stronger
+    /// offline-cracking resistance.
+    /// </remarks>
+    public static Argon2idOptions HighSecurity() => new()
+    {
+        MemorySizeKib = 131072,
+        Iterations = 4,
+        DegreeOfParallelism = 1,
+        SaltSizeBytes = 16,
+        HashSizeBytes = 32,
+    };
+
+    /// <summary>
+    /// Returns a memory-constrained-container profile: 16 MiB (<c>m=16384</c>),
+    /// <c>t=4</c>, <c>p=1</c>, 16-byte salt, 32-byte tag — trades memory for
+    /// iterations to stay above the OWASP minimum on tightly-budgeted hosts.
+    /// </summary>
+    /// <remarks>
+    /// Designed for small Kubernetes pods or burstable VMs where the
+    /// recommended 64 MiB doesn't fit alongside the rest of the process. Stays
+    /// memory-hard, just shifts the cost into the time factor.
+    /// </remarks>
+    public static Argon2idOptions LowMemoryContainer() => new()
+    {
+        MemorySizeKib = 16384,
+        Iterations = 4,
+        DegreeOfParallelism = 1,
+        SaltSizeBytes = 16,
+        HashSizeBytes = 32,
+    };
 
     /// <summary>
     /// Validates the parameter set, throwing <see cref="ArgumentOutOfRangeException"/>

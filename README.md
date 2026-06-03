@@ -70,7 +70,11 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 - [Getting started in five minutes](#getting-started-in-five-minutes)
 - [60-second tour](#60-second-tour)
 - [Password hashing (all runtimes)](#password-hashing-all-runtimes)
+  - [One-line opinionated presets](#one-line-opinionated-presets)
+  - [Startup-time validation](#startup-time-validation)
+  - [DoS protection on Argon2id endpoints](#dos-protection-on-argon2id-endpoints)
 - [Hybrid tokens (.NET 10)](#hybrid-tokens-net-10)
+  - [IETF JOSE PQC alignment — where the `alg` identifier comes from](#ietf-jose-pqc-alignment--where-the-alg-identifier-comes-from)
 - [Try the demo](#try-the-demo)
 - [Public API at a glance](#public-api-at-a-glance)
 - [How it fits the PostQuantum.* family](#how-it-fits-the-postquantum-family)
@@ -356,6 +360,70 @@ Defaults exceed the OWASP minimum and follow the RFC 9106 second recommended
 profile. The lower bounds are enforced — a configuration weaker than 8 MiB
 throws at construction rather than silently degrading security.
 
+### One-line opinionated presets
+
+Most teams don't want to tune Argon2id parameters by hand. Four named factory
+methods on `Argon2idOptions` and a one-line DI overload cover the realistic
+environment classes:
+
+```csharp
+// Pick one — values are copied at registration time, so the preset is decoupled
+// from anything you mutate afterwards.
+.AddArgon2idPasswordHasher<IdentityUser>(Argon2idOptions.RecommendedDefault())
+.AddArgon2idPasswordHasher<IdentityUser>(Argon2idOptions.OwaspMinimum())
+.AddArgon2idPasswordHasher<IdentityUser>(Argon2idOptions.HighSecurity())
+.AddArgon2idPasswordHasher<IdentityUser>(Argon2idOptions.LowMemoryContainer())
+```
+
+| Preset | Memory | Iterations | Parallelism | Right for |
+|---|---:|---:|---:|---|
+| `RecommendedDefault()` (≡ the parameterless default) | 64 MiB | 3 | 1 | Server APIs, typical SaaS, default pick |
+| `OwaspMinimum()` | 19 MiB | 2 | 1 | Latency-sensitive endpoints, modest hardware |
+| `HighSecurity()` | 128 MiB | 4 | 1 | Admin consoles, key-derivation paths, KDF use |
+| `LowMemoryContainer()` | 16 MiB | 4 | 1 | Tight K8s pods / burstable VMs (trades memory for iterations) |
+
+All four pass `Argon2idOptions.Validate()` and have a Known-Answer-Test
+asserting their published profile. Both the `AddArgon2idPasswordHasher` and
+the `AddArgon2idPasswordHasherWithMigration` extension methods have the same
+one-line preset overload.
+
+### Startup-time validation
+
+A misconfigured work factor (`MemorySizeKib = 1024` and friends) used to
+throw on the first hash — i.e. when a real user tried to sign in. The DI
+helpers now register an `IValidateOptions<Argon2idOptions>` so a bad
+configuration fails when the host starts, with a message naming the offending
+property and value. Production deployments boot-fail visibly instead of
+shipping the misconfig and surprising the on-call rotation later.
+
+### DoS protection on Argon2id endpoints
+
+Argon2id is *deliberately expensive* — that's how it raises the offline
+cracking cost — but that also means a misbehaving client can burn
+disproportionate server CPU by spamming bogus `/login` or `/register` calls.
+Pair the hasher with an ASP.NET Core rate limiter on the auth endpoints:
+
+```csharp
+builder.Services.AddRateLimiter(o => o.AddPolicy("auth", ctx =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromSeconds(30),
+        })));
+
+app.UseRateLimiter();
+
+app.MapPost("/login", /* … */).RequireRateLimiting("auth");
+app.MapPost("/register", /* … */).RequireRateLimiting("auth");
+```
+
+Both samples ([minimal API](samples/PostQuantum.Identity.Demo), [MVC](samples/PostQuantum.Identity.Mvc.Demo))
+wire this exact pattern. Pair the in-process limiter with edge-level limits
+(CDN / API gateway / WAF) for real deployments — the in-process limiter is
+the last line of defense, not the whole story.
+
 ### Migrating an existing store
 
 If your users were created with the stock ASP.NET Core Identity PBKDF2 hasher,
@@ -396,6 +464,40 @@ tamper, wrong audience, or expiry throws). See the demo's `/me` endpoint for a
 worked example, or use the
 [`PostQuantum.Jwt.AspNetCore`](https://github.com/systemslibrarian/postquantum-jwt)
 bearer handler to slot it into the standard auth pipeline.
+
+### IETF JOSE PQC alignment — where the `alg` identifier comes from
+
+A common, fair question: *"why doesn't `alg = ML-DSA-65` validate in
+Java/Node/Rust JWT libraries?"* The honest answer is in two parts.
+
+**Where the identifier is stamped.** The wire-level `alg` / `enc` headers
+(`ML-DSA-65`, `X-Wing`, `A256GCM`) are written by the upstream
+[PostQuantum.Jwt](https://github.com/systemslibrarian/postquantum-jwt)
+builder — not by this package. PostQuantum.Identity consumes the builder; it
+does not pick the identifier. So changing it cannot happen in this repo
+alone; it happens upstream and we inherit.
+
+**Why it's intentionally non-IANA today.** The IETF JOSE working group's
+post-quantum JWS algorithm registration is still in flight
+([`draft-ietf-jose-pq-jose-extensions`](https://datatracker.ietf.org/doc/draft-ietf-jose-pq-jose-extensions/),
+[`draft-ietf-cose-dilithium`](https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/),
+related COSE work). The final wire names — `ML-DSA-65`, `MLDSA65`,
+numeric codepoints, something else — have not settled. Shipping a *placeholder*
+IANA-ish identifier today and renaming it on RFC publication would create
+exactly the cross-ecosystem breakage adopters fear. Until the drafts
+finalize, we use a descriptive, deliberately distinct name so anyone
+verifying a token knows they need a PQ-aware validator, not a generic one.
+
+**How that becomes painless later.** When the drafts reach RFC or stable WG
+consensus, PostQuantum.Jwt will publish a release that adopts the
+standardized identifiers; PostQuantum.Identity picks them up via a normal
+version bump — **no PostQuantum.Identity API change required**. Java / Node /
+Rust libraries implementing the same RFC will then verify tokens issued by
+this library across ecosystems.
+
+This is the single largest gate on the [Roadmap to 1.0](#roadmap-to-10) for
+the token surface. Track upstream progress at the PostQuantum.Jwt repo and
+the IETF JOSE / COSE working group datatracker.
 
 ---
 

@@ -20,6 +20,22 @@ namespace PostQuantum.Identity.Tokens;
 /// <see cref="SigningKey"/> and any recipient encryption key, including their
 /// generation, storage, and rotation. This library never persists key material.
 /// </para>
+/// <para>
+/// <b>Algorithm identifiers and IETF JOSE PQC alignment.</b> The wire-level
+/// <c>alg</c>/<c>enc</c> identifiers (<c>ML-DSA-65</c>, <c>X-Wing</c>,
+/// <c>A256GCM</c>) are stamped into the JOSE header by the upstream
+/// <see href="https://github.com/systemslibrarian/postquantum-jwt">PostQuantum.Jwt</see>
+/// builder — this package consumes them, it does not choose them. They are
+/// intentionally non-IANA today: the IETF JOSE drafts for post-quantum JWS
+/// algorithms (<c>draft-ietf-jose-pq-jose-extensions</c> and friends) have
+/// not yet settled on final identifiers, and shipping a placeholder name
+/// would invite later interoperability breakage. When the drafts reach RFC
+/// or stable WG consensus, PostQuantum.Jwt will adopt the standardized
+/// identifiers and this package will pick them up via a normal version bump
+/// — no PostQuantum.Identity API change required. Until then, treat these
+/// tokens as interoperable only within an ecosystem you fully own. See the
+/// <see href="https://github.com/systemslibrarian/postquantum-identity#roadmap-to-10">Roadmap to 1.0</see>.
+/// </para>
 /// </remarks>
 public sealed class PostQuantumTokenOptions
 {

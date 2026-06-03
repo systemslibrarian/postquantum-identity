@@ -1,9 +1,21 @@
 # Security Policy
 
-PostQuantum.Identity is **preview software** (`0.x.y-preview.z`). It is not yet
-suitable for production use and has not been independently audited. This
-document states the security model honestly so you can make an informed
-decision before relying on it.
+PostQuantum.Identity ships two surfaces with **different maturity profiles**,
+and this document is honest about that:
+
+- The **Argon2id password-hashing surface** is implemented to production
+  discipline (RFC 9106 KAT-pinned, fail-closed, constant-time tag compare,
+  vetted dependency). It is suitable for production adoption today.
+- The **hybrid post-quantum token surface** is preview, appropriate for
+  **owned / trusted ecosystems** (you control issuer and every verifier),
+  not for public-internet OIDC. It depends on
+  [PostQuantum.Jwt](https://github.com/systemslibrarian/postquantum-jwt)
+  while that package and the IETF JOSE PQC drafts mature.
+
+Neither half has been independently audited. The
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md) file enumerates everything that is
+unfinished, unverified, or deliberately out of scope, and is updated in
+lockstep with the code. Read it before depending on this library.
 
 ## Supported versions
 
@@ -163,13 +175,22 @@ PostQuantum.Jwt and its dependencies.)
 
 ## Honesty statement
 
-This is preview software written in the open. It has **not** been audited.
+This is preview software written in the open. It has **not** been
+independently audited.
 
-Until a 1.0 release and an external review, treat this library as suitable
-for experimentation only. Known limitations are tracked transparently in
-[`KNOWN-GAPS.md`](KNOWN-GAPS.md), and every "missing thing" exists in the
-sample code, the docs, or the open issue tracker — not silently in some
-private TODO file.
+The Argon2id surface is implemented to production discipline and is
+appropriate for production adoption today. The hybrid-token surface is the
+right tool for **owned / trusted ecosystems** (where you control both the
+issuer and every verifier) and is not appropriate for public-internet OIDC
+or any boundary that needs generic-JWT-tooling interoperability — the
+`alg = ML-DSA-65` identifier is non-IANA on purpose.
+
+Until a 1.0 release and an external review, every limitation is enumerated
+in [`KNOWN-GAPS.md`](KNOWN-GAPS.md) and the
+[`Roadmap to 1.0`](README.md#roadmap-to-10) in the README lists exactly what
+unblocks each remaining gate. Every "missing thing" exists in the sample
+code, the docs, or the open issue tracker — not silently in some private
+TODO file.
 
 ---
 

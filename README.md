@@ -13,26 +13,23 @@ hybrid JWTs** for authenticated users via [**PostQuantum.Jwt**](https://github.c
 encryption. It drops into the standard Identity builder chain and is honest about
 exactly what it provides.
 
-> ### Read this first
->
-> - **The Argon2id password hasher runs on `net8.0`, `net9.0`, and `net10.0`.**
->   It is a complete, secure-by-default `IPasswordHasher<TUser>` you can adopt
->   today on any of those runtimes.
-> - **The post-quantum token service requires `.NET 10.**` The BCL post-quantum
->   primitives (`MLDsa`/`MLKem`) and the PostQuantum.Jwt package ship for .NET
->   10, and on Linux need OpenSSL 3.5+. On `net8.0`/`net9.0` you get the Argon2id
->   hasher only.
-> - **The hybrid tokens are intentionally non-interoperable.** They use
->   `alg = ML-DSA-65` — not an IANA-registered JOSE identifier — so they will
->   **not** validate in `System.IdentityModel.Tokens.Jwt`, Auth0/Okta SDKs, or
->   generic JWT tooling. Use this only when **you own both the issuer and every
->   verifier.** See [PostQuantum.Jwt's README](https://github.com/systemslibrarian/postquantum-jwt)
->   for the full rationale.
+## Production readiness — at a glance
 
-> **Status — `0.3.0-preview.1`. Preview software. Not for production use.**
-> The API may change before 1.0. The cryptographic construction has **not** been
-> independently audited. Read [`KNOWN-GAPS.md`](KNOWN-GAPS.md) before depending
-> on this for anything that matters.
+PostQuantum.Identity ships two surfaces with **different maturity profiles**.
+We split the recommendation so the right half lands on the right call:
+
+| Surface | Runtimes | Stance | Why |
+|---|---|---|---|
+| **Argon2id password hashing** — `Argon2idPasswordHasher`, `MigratingPasswordHasher`, the `IPasswordHasher<TUser>` adapter | net8 / net9 / net10 | **Ready for production use.** | Engine is RFC 9106 §5.3 KAT-pinned, interop-verified against the reference `argon2` CLI, with a PHC wire-format pin and roundtrips across OWASP / RFC 9106 / strong / minimum profiles. Fail-closed, constant-time tag compare, vetted dependency (Konscious). One-line drop-in via `AddArgon2idPasswordHasher` or `AddArgon2idPasswordHasherWithMigration`. |
+| **Hybrid post-quantum tokens** — `IPostQuantumTokenService<TUser>`, `PostQuantumTokenOptions`, `AddPostQuantumTokens` | net10 only | **Preview, suitable for owned / trusted ecosystems.** | `alg = ML-DSA-65` is **non-IANA on purpose** — tokens are intentionally not validated by generic JWT tooling. Pair with PostQuantum.Jwt's `PqJwtBearer` handler. Adopt only when **you own both the issuer and every verifier**, e.g. service-to-service inside one fleet. Not for public-internet OIDC. |
+
+> **Status — `0.3.0-preview.1`.** Not yet independently audited; the public API
+> may shift before 1.0 (path to 1.0 below). The Argon2id half is implemented to
+> production discipline; the hybrid-token half waits on its upstream
+> ([PostQuantum.Jwt](https://github.com/systemslibrarian/postquantum-jwt))
+> reaching 1.0 and on the IETF JOSE PQC drafts settling. Always read
+> [`KNOWN-GAPS.md`](KNOWN-GAPS.md) before committing to it for anything
+> load-bearing.
 
 ### What's new in 0.3.0-preview.1
 
@@ -65,9 +62,12 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 
 ## Table of contents
 
+- [Production readiness — at a glance](#production-readiness--at-a-glance)
 - [Why](#why)
 - [When to use this library](#when-to-use-this-library)
+- [Roadmap to 1.0](#roadmap-to-10)
 - [Install](#install)
+- [Getting started in five minutes](#getting-started-in-five-minutes)
 - [60-second tour](#60-second-tour)
 - [Password hashing (all runtimes)](#password-hashing-all-runtimes)
 - [Hybrid tokens (.NET 10)](#hybrid-tokens-net-10)
@@ -76,7 +76,7 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 - [How it fits the PostQuantum.* family](#how-it-fits-the-postquantum-family)
 - [Comparison with alternatives](#comparison-with-alternatives)
 - [Security posture](#security-posture)
-- [Supply chain](#supply-chain)
+- [Supply chain — verifiable in three commands](#supply-chain--verifiable-in-three-commands)
 - [Compatibility](#compatibility)
 - [Building from source](#building-from-source)
 - [License](#license)
@@ -105,45 +105,67 @@ hybrid token.
 
 ## When to use this library
 
-Three honest checks before you adopt this package.
+Four honest checks before you adopt this package. Read them in order — the
+first match is the right one.
 
-### ✅ Use PostQuantum.Identity when…
+### ✅ Use PostQuantum.Identity *today* when…
 
-- **You ship ASP.NET Core Identity** and want to migrate the password hasher to
-  Argon2id with a one-line registration change and zero migration job
-  — see [`docs/MIGRATION.md`](docs/MIGRATION.md).
-- **You issue JWTs to your own services** and want hybrid (classical + PQ)
-  signatures *now*, ahead of the standards landing. You **own both the issuer
-  and every verifier** — there is no third-party JWT library in your trust
-  chain that needs to understand `alg = ML-DSA-65`.
-- **You want a small, focused dependency**: framework-agnostic Identity core,
-  Argon2id from a vetted library, ML-DSA / ML-KEM from the BCL. No mystery
-  meat, no hand-rolled crypto.
+- **You ship ASP.NET Core Identity** and want the password hasher upgraded to
+  Argon2id with a one-line registration change and *zero* migration job.
+  Production-grade right now. See [`docs/MIGRATION.md`](docs/MIGRATION.md).
+- **You issue JWTs to your own services**, you own both the issuer and every
+  verifier, and you want hybrid (classical + PQ) signatures *now* ahead of the
+  standards landing. The preview maturity is acceptable inside a controlled
+  fleet because nothing outside your trust boundary needs to understand
+  `alg = ML-DSA-65`.
+- **You want a small, focused, vetted dependency surface.** Argon2id comes
+  from a widely-used library (Konscious, RFC 9106 KAT-pinned here); ML-DSA /
+  ML-KEM come from the .NET BCL. No hand-rolled crypto, no mystery meat.
 
-### ⚠️ Use the standalone Argon2id package instead when…
+### ⚠️ Use the *standalone* Argon2id package instead when…
 
-- You **don't ship Identity at all** (a console app, a tool, a non-ASP.NET
+- You **don't ship Identity at all** (a console app, a worker, a non-ASP.NET
   service). Reach for [`Argon2id.PasswordHasher`](https://github.com/systemslibrarian/argon2id-passwordhasher)
-  directly — it's a richer Argon2id surface (peppering, a more general
-  migration adapter, benchmarks) without the Identity contracts.
+  directly — same KAT-pinning, plus peppering, a more general migration
+  adapter, and benchmarks, without the Identity contracts.
 - You need **a server-held pepper / keyed hashing**. This package's Argon2id
   core is intentionally salt-and-parameters-only; the standalone package adds
   a `PepperRing` for HSM-style secret mixing.
 
-### ⛔ Don't use PostQuantum.Identity when…
+### ⏳ Wait — don't adopt the *token* surface yet when…
 
-- **You need the issued tokens to validate in third-party JWT tooling**
-  (`System.IdentityModel.Tokens.Jwt`, Auth0/Okta SDKs, OIDC providers). The
-  `alg = ML-DSA-65` identifier is intentionally non-IANA — the spec hasn't
-  landed. Generic libraries will reject these tokens.
-- **You're waiting for the .NET PQC story to fully mature.** That's a
-  reasonable position to hold; this package exists for people who want to
-  shorten the harvest-now-decrypt-later window today, with eyes open, in a
-  closed system they fully control.
-- **You can't tolerate a preview library.** This is `0.x.y-preview.z`, has
-  **not** been independently audited, and the public API may shift before
-  1.0. See [`KNOWN-GAPS.md`](KNOWN-GAPS.md) for the honest list of what's
-  unfinished or unverified.
+- **Your tokens cross trust boundaries to third-party JWT tooling.** Generic
+  libraries (`System.IdentityModel.Tokens.Jwt`, Auth0/Okta SDKs, public OIDC
+  providers) will reject `alg = ML-DSA-65`. Wait for the IETF JOSE PQC drafts
+  to settle, or stay on classical algorithms for that boundary and use this
+  library only on the internal hop.
+- **Your organization requires a third-party security audit before adoption.**
+  This library has not yet been independently audited; the path to 1.0 below
+  lists what would unblock that.
+
+### ⛔ Don't use this library when…
+
+- **You're not on ASP.NET Core Identity** at all. The package is built around
+  the Identity contracts; without them, nothing about it fits.
+
+## Roadmap to 1.0
+
+The library exits preview when **all** of the following land. Track progress
+on each via the GitHub milestones; `KNOWN-GAPS.md` is updated in lockstep.
+
+| Gate | Status |
+|---|---|
+| Public API frozen for a full minor cycle with no breaking changes | open |
+| Upstream [`PostQuantum.Jwt`](https://github.com/systemslibrarian/postquantum-jwt) reaches `1.0.0` (stable) | open — currently `1.0.0-preview.1` |
+| IETF JOSE PQC drafts (alg/kty identifiers) reach RFC or stable WG consensus | open |
+| Third-party security review of the issuance + verification path | open |
+| Fuzz / property-based corpus for the PHC parser and token validator | open |
+| Benchmarks tracked in CI with a regression budget | open |
+
+Until those gates close, every release keeps the `-preview.N` suffix and the
+honesty-statement in [`SECURITY.md`](SECURITY.md) — even where the underlying
+code is already production-quality. Premature 1.0 is a worse sin than honest
+preview.
 
 ---
 
@@ -157,6 +179,107 @@ dotnet add package PostQuantum.Identity --version 0.3.0-preview.1
 
 Targets `net8.0`, `net9.0`, and `net10.0`. The token features light up on
 `net10.0`; the Argon2id hasher works everywhere.
+
+---
+
+## Getting started in five minutes
+
+The fastest path from `dotnet new` to a working login that returns a
+post-quantum hybrid token. Argon2id-only is even shorter — just stop after
+step 3.
+
+**1. Create a minimal-API app and add the packages.**
+
+```bash
+dotnet new web -n MyApi
+cd MyApi
+dotnet add package PostQuantum.Identity --prerelease
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+dotnet add package Microsoft.EntityFrameworkCore.InMemory
+# On .NET 10 only, for token validation in the auth pipeline:
+dotnet add package PostQuantum.Jwt.AspNetCore --prerelease
+```
+
+**2. Wire Identity with the Argon2id hasher.** Replace the contents of
+`Program.cs` with:
+
+```csharp
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using PostQuantum.Identity.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddDbContext<AppDb>(o => o.UseInMemoryDatabase("MyApi"))
+    .AddIdentityCore<IdentityUser>(o => o.Password.RequiredLength = 8)
+    // One line replaces the default PBKDF2 hasher with Argon2id (PHC).
+    .AddArgon2idPasswordHasher<IdentityUser>()
+    .AddEntityFrameworkStores<AppDb>();
+
+var app = builder.Build();
+
+app.MapPost("/register", async (Creds c, UserManager<IdentityUser> users) =>
+    (await users.CreateAsync(new() { UserName = c.Username }, c.Password)).Succeeded
+        ? Results.Ok() : Results.BadRequest());
+
+app.Run();
+
+record Creds(string Username, string Password);
+sealed class AppDb(DbContextOptions<AppDb> o)
+    : Microsoft.AspNetCore.Identity.EntityFrameworkCore.IdentityDbContext<IdentityUser>(o);
+```
+
+`dotnet run` — you have an Identity app whose passwords are hashed with
+Argon2id. Done with the password-only path.
+
+**3. Migrating an existing store?** Swap one line:
+
+```diff
+- .AddArgon2idPasswordHasher<IdentityUser>()
++ .AddArgon2idPasswordHasherWithMigration<IdentityUser>()
+```
+
+Old PBKDF2 hashes verify under the legacy path and rehash to Argon2id on the
+next successful sign-in. No migration job. Full guide:
+[`docs/MIGRATION.md`](docs/MIGRATION.md).
+
+**4. Add post-quantum hybrid tokens** (.NET 10 only). Provision an ML-DSA-65
+key out of band, then extend the registration:
+
+```csharp
+using System.Security.Cryptography;
+using PostQuantum.Identity.Tokens;
+using PostQuantum.Jwt;
+using PostQuantum.Jwt.AspNetCore;
+
+// ... existing AddIdentityCore + AddArgon2idPasswordHasher chain ...
+    .AddPostQuantumTokens<IdentityUser>(o =>
+    {
+        o.SigningKey = signingKey;             // your provisioned ML-DSA-65 key
+        o.KeyId      = "k-2026-06";            // stamped into the token's kid
+        o.Issuer     = "https://issuer.example";
+        o.Audience   = "api://my-fleet";
+        o.Lifetime   = TimeSpan.FromHours(1);
+    });
+
+builder.Services
+    .AddAuthentication(PqJwtBearerDefaults.AuthenticationScheme)
+    .AddPqJwtBearer(o => o.ValidationParameters = new PqJwtValidationParameters
+    {
+        SignatureKeyResolver = kid => kid == "k-2026-06" ? verifyingKey : null,
+        ValidIssuer   = "https://issuer.example",
+        ValidAudience = "api://my-fleet",
+    });
+builder.Services.AddAuthorization();
+```
+
+Issue tokens in your `/login` endpoint via the injected
+`IPostQuantumTokenService<IdentityUser>`; validate them by adding
+`[Authorize]` to any endpoint. Two runnable, production-shaped samples
+([minimal API](samples/PostQuantum.Identity.Demo) and
+[MVC](samples/PostQuantum.Identity.Mvc.Demo)) show the full pattern with
+`/refresh`, `/logout`, `kid`-based rotation, and a JWKS-style key endpoint.
 
 ---
 
@@ -391,46 +514,52 @@ yet in [`KNOWN-GAPS.md`](KNOWN-GAPS.md).
 
 ---
 
-## Supply chain
+## Supply chain — verifiable in three commands
 
-The same hygiene we apply to the code applies to the package you install:
-
-- **SBOM in every `.nupkg`.** Every `dotnet pack` emits a CycloneDX SBOM
-  (`bom.json`) and embeds it at the root of the package, generated from the
-  *multi-target* dependency graph (no TFM collapses to keep transitive deps
-  intact). Inspect with `unzip -p PostQuantum.Identity.<v>.nupkg bom.json`.
-- **Build provenance attestation.** The
-  [`release.yml`](.github/workflows/release.yml) workflow attaches a GitHub
-  artifact attestation to every published `.nupkg` / `.snupkg` via
-  [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance),
-  so consumers can verify the package was built from this repo at a specific
-  commit with `gh attestation verify`.
-- **Deterministic builds with SourceLink.** The repo sets `Deterministic=true`,
-  `ContinuousIntegrationBuild=true` under CI, embeds the GitHub repository URL,
-  and ships `.snupkg` symbols. Stack traces from a published `.nupkg` map back
-  to a known commit in this repo.
-- **Pinned dependency surface.** The library depends on:
-  - `Konscious.Security.Cryptography.Argon2` (Argon2 1.3 spec impl) — every
-    TFM,
-  - `Microsoft.Extensions.Identity.Core` (Identity contracts; no web host, no
-    EF) — every TFM,
-  - `PostQuantum.Jwt` — **net10 only**, gated by `#if NET10_0_OR_GREATER`.
-
-  Dependabot is configured (see `.github/dependabot.yml`) to surface upstream
-  bumps as PRs.
-- **CodeQL on every PR.** [`codeql.yml`](.github/workflows/codeql.yml) scans
-  on every push and pull request; results land in GitHub's Security tab.
-
-How to verify a package you pulled from NuGet:
+A library you can't independently verify isn't really yours to trust. The
+package you pull from NuGet is **built deterministically in GitHub Actions**,
+**ships its own SBOM**, and **carries a GitHub build-provenance attestation
+signed by Sigstore**. Anyone can verify the whole chain in three commands:
 
 ```bash
-# 1. Inspect the embedded SBOM.
-nuget install PostQuantum.Identity -Version 0.3.0-preview.1
-unzip -p PostQuantum.Identity.0.3.0-preview.1.nupkg bom.json | jq '.components | length'
+# 1. Pull the package from nuget.org.
+nuget install PostQuantum.Identity -Version 0.3.0-preview.1 -OutputDirectory ./pkg
+PKG=./pkg/PostQuantum.Identity.0.3.0-preview.1/PostQuantum.Identity.0.3.0-preview.1.nupkg
 
-# 2. Verify the GitHub build-provenance attestation for the same .nupkg.
-gh attestation verify PostQuantum.Identity.0.3.0-preview.1.nupkg \
-  --owner systemslibrarian
+# 2. Inspect the embedded CycloneDX SBOM (covers all three TFMs).
+unzip -p "$PKG" bom.json | jq '{ format: .bomFormat, spec: .specVersion,
+  components: (.components | length) }'
+
+# 3. Verify the GitHub build-provenance attestation for that exact .nupkg.
+gh attestation verify "$PKG" --owner systemslibrarian
+```
+
+A passing verify proves the `.nupkg` was built by *this* repo's
+[`release.yml`](.github/workflows/release.yml) workflow, from a specific
+commit, in GitHub's hosted runners — not assembled or substituted in between.
+
+### What goes into the package
+
+| Hygiene | How it lands in your hands |
+|---|---|
+| **CycloneDX SBOM** embedded at `bom.json` | Generated from the *multi-target* dependency graph (no TFM collapses), so transitive deps for net8 / net9 / net10 stay distinct. Verify with the `unzip -p` line above. |
+| **Build-provenance attestation** | Released by [`release.yml`](.github/workflows/release.yml) via [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance) for every `.nupkg` and `.snupkg`. Sigstore-signed; verifiable with `gh attestation verify`. |
+| **Deterministic builds** | `Deterministic=true`, `ContinuousIntegrationBuild=true` under CI. Two builds of the same commit produce byte-equal assemblies. |
+| **SourceLink** + `.snupkg` symbols | Stack traces from a deployed `.nupkg` jump straight to the matching commit in this repo. |
+| **Pinned dependency surface** | `Konscious.Security.Cryptography.Argon2` (Argon2 1.3 spec impl) — every TFM. `Microsoft.Extensions.Identity.Core` — every TFM. `PostQuantum.Jwt` — **net10 only**, gated by `#if NET10_0_OR_GREATER`. No web-host or EF deps pulled in. |
+| **Dependabot** | Configured in [`.github/dependabot.yml`](.github/dependabot.yml) — upstream bumps land as PRs. |
+| **CodeQL** on every PR and push | [`codeql.yml`](.github/workflows/codeql.yml) — results land in GitHub's Security tab; CI blocks the push on a critical finding. |
+| **Version-sync check** in CI | [`scripts/check-version-sync.sh`](scripts/check-version-sync.sh) fails the build if the csproj, README, and CHANGELOG versions diverge. |
+
+### Reproducing a build locally
+
+```bash
+git clone https://github.com/systemslibrarian/postquantum-identity
+cd postquantum-identity
+git checkout v0.3.0-preview.1   # or your tag of interest
+dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release -o ./local
+# The assemblies inside ./local/*.nupkg are byte-equal to the published ones
+# at the same commit (within toolchain-version equivalence).
 ```
 
 ---

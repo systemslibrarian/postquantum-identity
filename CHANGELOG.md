@@ -38,20 +38,42 @@ testing, documentation, and samples toward a 10/10 bar.
     in-memory revocation middleware, and ProblemDetails error responses.
   - `samples/PostQuantum.Identity.Mvc.Demo` (controllers) is a controller-
     based mirror of the same flows.
-- **README — "When to use this library"** section and a **Comparison table**
-  vs. default Identity / Argon2id-alone / hand-rolled PQ JWT.
-- **README — "Supply chain"** section with verification commands for the
-  embedded CycloneDX SBOM and GitHub build-provenance attestation.
+- **README — "Production readiness — at a glance"** stating the split-surface
+  maturity (Argon2id production-ready; hybrid tokens preview for owned/trusted
+  ecosystems), with an explicit **Roadmap to 1.0** listing every gate that has
+  to close before the version stops carrying `-preview.N`.
+- **README — "Getting started in five minutes"** taking a reader from
+  `dotnet new` to a working register/login endpoint, with a one-line PBKDF2 →
+  Argon2id migration diff and the .NET 10 hybrid-token bolt-on.
+- **README — "When to use this library"** with sharper four-bucket framing
+  (✅ adopt today / ⚠️ use standalone Argon2id / ⏳ wait on the token surface
+  / ⛔ don't) and a **Comparison table** vs. default Identity / Argon2id-alone
+  / hand-rolled PQ JWT.
+- **README — "Supply chain — verifiable in three commands"** leading with the
+  `nuget install` → `unzip -p bom.json` → `gh attestation verify` flow, a
+  per-hygiene matrix (SBOM, attestation, deterministic builds, SourceLink,
+  pinned deps, Dependabot, CodeQL, version-sync), and a reproducible local
+  build snippet.
+- **MIGRATION.md — "What you can promise stakeholders before shipping"**
+  operational checklist: zero forced resets, no migration job, reversible,
+  fail-closed, no new persisted state, single dep.
 
 ### Changed
 
 - net10 line coverage is now ~94% (71 tests on net10; 49 on net8/net9).
+- **Sample bug fixes** (also shipped to `main` before tag): /refresh issues
+  the new token BEFORE revoking the old jti (transient failure cannot leave
+  the caller token-less); /me formats `expiresAt` as ISO-8601 instead of a
+  raw Unix-seconds string; `expires_in` is no longer hardcoded — `Lifetime`
+  is lifted into a single source-of-truth constant.
 - `docs/MIGRATION.md` rewritten as a step-by-step transparent-migration guide
-  (PBKDF2 path, bcrypt/scrypt path, work-factor tuning, rollback, FAQ).
-- `SECURITY.md` and `KNOWN-GAPS.md` refreshed: expanded KAT corpus, explicit
-  revocation contract, honest-statement updates.
-- `.csproj` package description and release notes expanded to reflect the
-  polished surface and supply-chain story.
+  (PBKDF2 path, bcrypt/scrypt path, work-factor tuning, rollback, FAQ) and
+  now leads with a stakeholder checklist.
+- `SECURITY.md` and `KNOWN-GAPS.md` restructured around the split-surface
+  stance and the Roadmap-to-1.0 gates; expanded KAT corpus and revocation
+  contract preserved.
+- `.csproj` package description and release notes restructured to lead with
+  the production-readiness positioning and the supply-chain verification flow.
 
 ## [0.2.0-preview.1] — 2026-06-02
 

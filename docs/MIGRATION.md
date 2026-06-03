@@ -18,6 +18,27 @@ PBKDF2 hasher (or from bcrypt/scrypt) to Argon2id, **without** a migration job,
 > **verifies legacy PBKDF2 hashes** and **rewrites them as Argon2id on the next
 > successful sign-in**. New users hash with Argon2id immediately.
 
+## What you can promise stakeholders before shipping
+
+If you're getting sign-off, here is the shape of the change in plain
+operational terms — none of these claims rely on hand-waving:
+
+- **Zero forced password resets.** Every active user keeps signing in with the
+  password they already have. The hash gets rewritten under the hood.
+- **No migration job and no maintenance window.** The conversion happens
+  one user at a time, lazily, during their next successful sign-in.
+- **Reversible until the moment a user signs in.** Up to that point the row
+  is still PBKDF2; you can swap the registration back without losing anyone.
+- **Fail-closed.** A row that is corrupted, garbage, or any unknown legacy
+  format never matches — the migrating hasher catches the stock hasher's
+  exceptions and returns `Failed`.
+- **No new persisted state.** The hasher is a verify-and-rehash function; no
+  background tables, no queues, no batch jobs. The PHC string in
+  `AspNetUsers.PasswordHash` is the entire state.
+- **One package, one dependency.** `PostQuantum.Identity` brings
+  `Microsoft.Extensions.Identity.Core` and `Konscious.Security.Cryptography.Argon2`.
+  No web-host, no EF runtime, no ambient-context magic.
+
 ---
 
 ## Table of contents

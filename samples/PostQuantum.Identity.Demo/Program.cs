@@ -83,6 +83,11 @@ IdentityBuilder identity = builder.Services
     .AddArgon2idPasswordHasher<IdentityUser>(o => o.MemorySizeKib = 19456)
     .AddEntityFrameworkStores<DemoIdentityContext>();
 
+// Optional one-shot startup diagnostic: writes a single INFO log line summarising
+// the resolved Argon2id configuration so ops can confirm at boot exactly what
+// got picked up. Never logs key material, passwords, or token contents.
+builder.Services.AddPostQuantumPreflightLogging();
+
 // In-memory revocation list. A real service would back this by Redis / a DB
 // table with a TTL matching the token lifetime. The contract here — "is this
 // jti revoked?" — is the same regardless of the backing store.

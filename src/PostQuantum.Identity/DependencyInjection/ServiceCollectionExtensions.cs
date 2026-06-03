@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace PostQuantum.Identity.DependencyInjection;
@@ -174,6 +175,29 @@ public static class ServiceCollectionExtensions
             o.SaltSizeBytes = saltSize;
             o.HashSizeBytes = hashSize;
         });
+    }
+
+    /// <summary>
+    /// Opt-in startup diagnostic: writes a single structured INFO log line
+    /// summarizing the resolved Argon2id configuration when the host starts.
+    /// Lets ops confirm at boot exactly what work factors got picked up — useful
+    /// where a misconfigured environment variable or a forgotten options-binding
+    /// call would otherwise only surface as a latency surprise in production.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="services"/> is null.</exception>
+    /// <remarks>
+    /// Never logs key material, plaintext passwords, or token contents. Uses
+    /// <see cref="IHostedService"/> so any host (Web, Worker, generic) that
+    /// runs to completion picks it up.
+    /// </remarks>
+    public static IServiceCollection AddPostQuantumPreflightLogging(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHostedService, PostQuantumPreflightLogger>());
+        return services;
     }
 }
 

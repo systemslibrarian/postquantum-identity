@@ -89,6 +89,29 @@ testing, documentation, and samples toward a 10/10 bar.
   this package), why it's intentionally non-IANA today (drafts in flight),
   and how cross-ecosystem verification will land via a normal upstream
   version bump with no PostQuantum.Identity API change.
+- **`docs/THREAT-MODEL.md`** — STRIDE per surface (Argon2id and tokens), with
+  per-threat code/test pointers and an explicit out-of-scope list.
+- **`docs/SECURITY-REVIEW-CHECKLIST.md`** — auditor-facing single-page index
+  to every claim in the security posture with file/line/test backings.
+- **`docs/PRODUCTION-CHECKLIST.md`** — go-live signoff checklist covering
+  hasher, sign-in protection, tokens, revocation, encryption, observability,
+  supply chain, DR, compliance, and final signoff.
+- **`SECURITY.md` — "FIPS 140-3 deployment guidance"** — per-primitive FIPS
+  cert status (honest: Argon2id outside, AES-256-GCM approved, ML-DSA/ML-KEM
+  TBD upstream), OS-level FIPS-mode behavior, compliance-friendly deployment
+  patterns, and what the library does/doesn't promise.
+- **README "Compatibility"** expanded: per-TFM surface table, per-OS support
+  rows (Windows / Linux modern / Linux older OpenSSL / macOS / Alpine),
+  container constraints with preset-to-pod-size mapping, CPU-arch note.
+- **README "Crypto agility — key rotation and algorithm rotation"** — extends
+  the `kid` rotation story with a full procedure and the future algorithm-
+  rotation path (`kid`-per-algorithm), honest about what depends on upstream.
+- **Opt-in startup preflight logger** — `AddPostQuantumPreflightLogging()`
+  registers a hosted service that writes a single structured INFO line at
+  boot summarising the resolved Argon2id work factors and approximate
+  per-call memory budget. Source-generated `LoggerMessage` for allocation-
+  free output. Sentinel-string-tested to confirm it never logs key material,
+  passwords, or token contents. Wired into both samples.
 
 ### Changed
 

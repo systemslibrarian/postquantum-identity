@@ -50,6 +50,10 @@ IdentityBuilder identity = builder.Services
     .AddArgon2idPasswordHasher<IdentityUser>(o => o.MemorySizeKib = 19456)
     .AddEntityFrameworkStores<DemoIdentityContext>();
 
+// Boot-time diagnostic: a single INFO line summarising the resolved Argon2id
+// configuration. Never logs sensitive data.
+builder.Services.AddPostQuantumPreflightLogging();
+
 // In-memory revocation list (a real service would use Redis / a DB table with TTL).
 var revokedJtis = new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
 builder.Services.AddSingleton(revokedJtis);

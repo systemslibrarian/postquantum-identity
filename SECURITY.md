@@ -152,6 +152,72 @@ PostQuantum.Jwt and its dependencies.)
   dependencies (BouncyCastle for X25519/SHA3-256; BCL for ML-DSA/ML-KEM/AES-
   GCM) are documented in that project's SECURITY.md.
 
+## FIPS 140-3 deployment guidance
+
+PostQuantum.Identity is **not itself a FIPS 140-3 cryptographic module**, nor
+does it modify the certification status of any underlying primitive. What
+this section explains is how the library's surfaces map onto a FIPS-mode
+deployment so you can make an honest call with your compliance team.
+
+### Cryptographic-primitive certification status
+
+| Primitive | Used for | FIPS status (as of 2026-06-02) |
+|---|---|---|
+| **Argon2id** | Password hashing | **Not FIPS-approved.** Argon2 is not a NIST-published primitive. If your policy requires FIPS-only password verifiers, you'll use a PBKDF2 / Argon2 combination or stay on PBKDF2 — Argon2id sits outside the boundary regardless of who implements it. |
+| **ML-DSA-65 (FIPS 204)** | Token signature | **NIST-standardized as FIPS 204** (Aug 2024). The .NET 10 BCL ML-DSA implementation's certification status is **TBD** at Microsoft's side — track [Microsoft's FIPS 140 documentation](https://learn.microsoft.com/dotnet/standard/security/fips-compliance) for the current cert state. |
+| **ML-KEM-768 (FIPS 203)** | Hybrid encryption (PQ half) | **NIST-standardized as FIPS 203** (Aug 2024). BCL implementation cert TBD — same tracking as above. |
+| **X25519** | Hybrid encryption (classical half) | Not a NIST primitive (it is RFC 7748). The combined X-Wing construction is a hybrid; **the classical half is intentionally outside FIPS.** |
+| **AES-256-GCM** | Token content encryption | **FIPS-approved.** The BCL `AesGcm` implementation is part of the FIPS-validated Windows / .NET cryptography boundary on supported platforms. |
+| **SHA-2 / SHA-3 family** | Underneath the JWS / KDF paths via PostQuantum.Jwt | **FIPS-approved** for SHA-2; SHA-3 family is FIPS 202. |
+
+### How to deploy under FIPS mode
+
+- **OS-level FIPS mode** must be enabled by the platform (Windows Group
+  Policy "FIPS Algorithm Policy", or a Linux distribution's FIPS-mode
+  kernel / OpenSSL FIPS provider). This library does not flip that switch
+  and cannot opt itself out.
+- **.NET FIPS-mode behavior** delegates to the platform crypto provider for
+  every primitive marked above as "FIPS-approved" — Argon2id and X25519 do
+  not change behavior under FIPS mode because they're outside the boundary
+  to start with.
+- **What practically breaks** under a strict FIPS-only configuration:
+  - The Argon2id surface still **runs** (Konscious is a managed
+    implementation), but if your policy forbids non-FIPS-approved
+    primitives in production, you can't use this hasher there. Stay on
+    `PasswordHasher<TUser>` (PBKDF2) or run an Argon2id deployment outside
+    the FIPS boundary.
+  - The hybrid token surface needs the BCL ML-DSA / ML-KEM modules to be
+    available; on a FIPS-enforced host where those modules aren't yet
+    cert-included, `MLDsa.IsSupported` will return `false` and the token
+    service fails closed with a 503-equivalent (see the demo's
+    null-tokens branch).
+  - X25519 (the classical half of X-Wing) is outside the FIPS boundary;
+    encryption is unavailable in strict FIPS-only environments.
+- **Compliance-friendly deployment pattern:**
+  1. Use the **Argon2id hasher only outside the FIPS-required application
+     boundary** (e.g. a separate auth service), or
+  2. Use this library's `MigratingPasswordHasher` pattern to verify
+     existing PBKDF2 hashes and *not* upgrade to Argon2id when FIPS-only is
+     required (override the migrating hasher to suppress the
+     `SuccessRehashNeeded` signal), or
+  3. Restrict the hybrid-token surface to FIPS-approved building blocks
+     only (ML-DSA-65 + AES-256-GCM, **without** the X-Wing classical half).
+     This is a configuration choice — set `EncryptForRecipient = null`.
+
+### What we promise / what we don't
+
+- We promise the library is **transparent** about which primitives are
+  FIPS-approved and which are not (the table above).
+- We promise to update this section when Microsoft publishes the BCL
+  ML-DSA / ML-KEM FIPS certification status.
+- We do **not** promise that the library itself is FIPS-certified — it
+  isn't. It's a thin layer over primitives whose certification is set
+  upstream.
+
+If your organization needs a formal FIPS validation of this library, that
+is a separate engagement; please file a discussion on the repo so we can
+track it.
+
 ## Supply chain
 
 - **Embedded SBOM.** Every `.nupkg` contains a CycloneDX SBOM (`bom.json`)

@@ -101,6 +101,10 @@ benchmarks. 0.1.0 was the initial Argon2id hasher + hybrid-token service.
     <!-- Framework-agnostic ASP.NET Core Identity core: IPasswordHasher<TUser>,
          PasswordHasher<TUser>, IdentityBuilder, UserManager<TUser>. No EF / web host pulled in. -->
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.0" />
+    <!-- For the opt-in AddPostQuantumPreflightLogging() hosted service. The
+         abstractions package keeps the dep surface tiny — no full host runtime
+         pulled in for callers who never opt in. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 

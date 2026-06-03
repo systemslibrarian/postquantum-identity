@@ -387,7 +387,7 @@ asserting their published profile. Both the `AddArgon2idPasswordHasher` and
 the `AddArgon2idPasswordHasherWithMigration` extension methods have the same
 one-line preset overload.
 
-### Startup-time validation
+### Startup-time validation and preflight logging
 
 A misconfigured work factor (`MemorySizeKib = 1024` and friends) used to
 throw on the first hash — i.e. when a real user tried to sign in. The DI
@@ -395,6 +395,21 @@ helpers now register an `IValidateOptions<Argon2idOptions>` so a bad
 configuration fails when the host starts, with a message naming the offending
 property and value. Production deployments boot-fail visibly instead of
 shipping the misconfig and surprising the on-call rotation later.
+
+For the inverse case — *valid* config that you nevertheless want confirmed
+in the startup log — opt into a one-shot preflight diagnostic:
+
+```csharp
+builder.Services
+    .AddArgon2idPasswordHasher<IdentityUser>(Argon2idOptions.RecommendedDefault())
+    .Services
+    .AddPostQuantumPreflightLogging();   // one INFO line at boot
+```
+
+It writes a single structured INFO line summarising the resolved Argon2id
+work factors and the approximate per-call memory budget. Never logs key
+material, plaintext passwords, or token contents (regression-tested with
+sentinel-string assertions).
 
 ### DoS protection on Argon2id endpoints
 
@@ -464,6 +479,60 @@ tamper, wrong audience, or expiry throws). See the demo's `/me` endpoint for a
 worked example, or use the
 [`PostQuantum.Jwt.AspNetCore`](https://github.com/systemslibrarian/postquantum-jwt)
 bearer handler to slot it into the standard auth pipeline.
+
+### Crypto agility — key rotation and algorithm rotation
+
+PostQuantum.Identity assumes you'll rotate signing keys (routine) and
+eventually rotate signature algorithms (when standards or analysis evolve).
+Both are first-class operations.
+
+**Key rotation (`kid`)** — the routine case, demonstrated end-to-end in the
+minimal-API demo. Stamp `PostQuantumTokenOptions.KeyId` into each issued
+token; the verifier's `SignatureKeyResolver` maps `kid` → public key, so
+tokens signed by either the current or previous key validate during the
+overlap window:
+
+```csharp
+// Issuer: stamp the current kid into every token.
+o.SigningKey = signingKeyRing[CurrentKeyId];
+o.KeyId      = CurrentKeyId;
+
+// Verifier: resolve the right public key by kid.
+o.ValidationParameters = new PqJwtValidationParameters
+{
+    SignatureKeyResolver = kid => verifyingKeyRing.GetValueOrDefault(kid ?? ""),
+    ValidIssuer   = Issuer,
+    ValidAudience = Audience,
+};
+```
+
+Rotation procedure:
+1. Add new `kid` (and key) to the verifier's resolver.
+2. Wait one verifier-deployment cycle (so every verifier holds the new key).
+3. Flip the issuer to sign with the new `kid`.
+4. Wait one `Lifetime` (so every active token issued under the old key has
+   naturally expired).
+5. Retire the old `kid` from the resolver.
+
+**Algorithm rotation** — the eventual case, when (a) NIST publishes a
+parameter-set update inside ML-DSA, (b) the IETF JOSE PQC drafts finalize
+new identifiers, or (c) a weakness is found and you need to migrate off
+ML-DSA-65 entirely. The pattern is the same shape as kid rotation, scaled
+up one level:
+
+- During a transition window, **issue under the new algorithm immediately**
+  but keep the **verifier accepting both** (the validator's
+  `SignatureKeyResolver` already keys on `kid`; allocate distinct kids per
+  algorithm so the resolver can route to the right primitive).
+- This depends on **upstream PostQuantum.Jwt exposing dual-alg validation**
+  in a future release. Until then, in-place algorithm rotation is a hard
+  cutover. The `kid`-per-algorithm pattern still gives you a clear
+  rollback point — switch the issuer back to the previous `kid` and the
+  old verifier path continues to work.
+
+**No PostQuantum.Identity API change is required** when upstream
+PostQuantum.Jwt adopts standardized identifiers or new algorithm
+parameter sets. You pick them up via a normal version bump.
 
 ### IETF JOSE PQC alignment — where the `alg` identifier comes from
 
@@ -668,14 +737,49 @@ dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release -o .
 
 ## Compatibility
 
+### Per-target-framework surface availability
+
 | | net8.0 | net9.0 | net10.0 |
 |---|:---:|:---:|:---:|
 | Argon2id `IPasswordHasher<TUser>` | ✅ | ✅ | ✅ |
+| Migrating PBKDF2 → Argon2id hasher | ✅ | ✅ | ✅ |
+| Opinionated work-factor presets | ✅ | ✅ | ✅ |
+| Startup-time `IValidateOptions` | ✅ | ✅ | ✅ |
 | Post-quantum hybrid token service | — | — | ✅ |
+| ML-DSA-65 signature & verification | — | — | ✅ |
+| X-Wing hybrid encryption | — | — | ✅ |
+| Source-generated AOT-clean claim path | — | — | ✅ |
 
-On Linux, the .NET 10 post-quantum primitives require **OpenSSL 3.5+**. Where
-ML-DSA is unavailable, token operations fail closed (and the tests skip
-themselves with a stated reason).
+### Per-OS / per-runtime support
+
+| OS | Argon2id | Token service | Notes |
+|---|:---:|:---:|---|
+| **Windows 11 / Server 2022+ (x64, ARM64)** | ✅ | ✅ | ML-DSA via Windows CNG. CI runs Windows lane on every PR. |
+| **Linux — glibc, OpenSSL ≥ 3.5** | ✅ | ✅ | Modern distros (Ubuntu 25.04+, Fedora 40+, RHEL 10 once it ships). CI runs a "PQ-required" lane pinning OpenSSL 3.5+ via conda-forge — any skipped PQ test there fails the build. |
+| **Linux — glibc, OpenSSL 3.0.x – 3.4.x** | ✅ | ⚠️ skipped | Argon2id runs; `MLDsa.IsSupported` returns `false`, so token operations 503 with a clear `ProblemDetails`. Pin a 3.5+ provider via `LD_LIBRARY_PATH` (the docker / dev-container pattern) to light up tokens. |
+| **macOS 13+ (Intel and Apple Silicon)** | ✅ | ⚠️ untested | Argon2id is pure managed code — no concern. Token surface depends on the .NET 10 BCL's macOS ML-DSA path; we haven't run it in CI yet. Treat as best-effort until that lane lands. |
+| **Alpine / musl** | ✅ | ⚠️ untested | Argon2id works; token surface depends on the musl OpenSSL build supplying an ML-DSA-capable provider — set up case-by-case. |
+
+### Container constraints
+
+| Container size | Recommended preset | Approx per-hash cost |
+|---|---|---|
+| **Tiny K8s pod / burstable VM** (< 256 MiB total) | `Argon2idOptions.LowMemoryContainer()` (16 MiB, t=4) | ~16 MiB allocated + freed per `HashPassword` / `Verify` |
+| **Standard API pod** (512 MiB – 2 GiB) | `Argon2idOptions.RecommendedDefault()` (64 MiB, t=3) | ~64 MiB per call |
+| **Beefy admin / KDF service** (≥ 4 GiB) | `Argon2idOptions.HighSecurity()` (128 MiB, t=4) | ~128 MiB per call |
+
+Argon2id allocates its memory block **per-call**, freed when the call
+returns. Concurrent sign-ins on the same pod multiply this — size pod
+memory limits as `(per-hash memory) × (concurrent-sign-in budget) + headroom`.
+The bundled rate-limiter pattern caps concurrent budget; tune in tandem.
+
+### CPU architecture
+
+The library is pure-managed and CPU-architecture-agnostic. The Argon2id
+inner loop and the BCL PQC primitives benefit from SIMD where the platform
+provides it (AVX2 / AVX-512 on x64, Neon on ARM64), but there is no
+hand-rolled intrinsics path in this library — performance follows the
+runtime + dependency choices, not anything we ship.
 
 ---
 

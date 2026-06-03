@@ -11,25 +11,47 @@ testing, documentation, and samples toward a 10/10 bar.
 
 ### Added
 
-- **Known Answer Tests for Argon2id:** the RFC 9106 §5.3 reference vector
-  (keyed + associated-data path) and the canonical reference-CLI PHC string
-  (`argon2 somesalt -id -t 2 -m 16 -p 1`) verified through our hasher — proving
-  the engine is spec-correct and our PHC parsing interoperates with standard
-  tooling.
+- **Argon2id Known Answer Tests (multi-layer):**
+  - RFC 9106 §5.3 reference vector (incl. keyed + associated-data path).
+  - Canonical reference-`argon2`-CLI PHC string verifies through our hasher.
+  - **PHC emitter wire-format pin** on the same vector (segment count, version
+    field, comma-ordering, padding-stripping).
+  - **Compute-then-format-then-verify roundtrips** across OWASP 2024 minimum
+    (19 MiB, t=2), library default / RFC 9106 second profile (64 MiB, t=3),
+    a stronger profile (128 MiB, t=4), and the documented minimum allowed by
+    `Argon2idOptions` (8 MiB, t=1).
+  - Single-byte-tag-tamper rejection KAT.
+- **Token Known Answer Tests** (net10): JOSE header pin (typ:JWT,
+  alg:ML-DSA-65, kid); registered-claim shape + timestamp consistency; single
+  vs. multi-role array shape; **sign-then-encrypt envelope KAT** (5-seg JWE,
+  alg:X-Wing, enc:A256GCM, cty:JWT) with full validation roundtrip; end-to-end
+  recovered-claim equality.
 - **Token security/validation corpus** (net10): sign-then-encrypt (X-Wing)
   roundtrip, multi-role JSON-array claims, reserved-claim override protection,
   and fail-closed rejection of expired / wrong-key / per-segment-tampered /
   malformed tokens.
-- **`Argon2idOptions` validation tests** covering every out-of-range branch, the
-  defensive-copy guarantee, and salt-size-driven rehash.
-- **Second sample:** `samples/PostQuantum.Identity.Mvc.Demo` — a controller-based
-  MVC API using the same Argon2id + PqJwtBearer wiring.
+- **`Argon2idOptions` validation tests** covering every out-of-range branch,
+  the defensive-copy guarantee, and salt-size-driven rehash.
+- **Production-shaped reference samples:**
+  - `samples/PostQuantum.Identity.Demo` (minimal API) adds `/refresh` (with
+    old-jti revocation), `/logout`, `/.well-known/pq-jwks` key discovery,
+    in-memory revocation middleware, and ProblemDetails error responses.
+  - `samples/PostQuantum.Identity.Mvc.Demo` (controllers) is a controller-
+    based mirror of the same flows.
+- **README — "When to use this library"** section and a **Comparison table**
+  vs. default Identity / Argon2id-alone / hand-rolled PQ JWT.
+- **README — "Supply chain"** section with verification commands for the
+  embedded CycloneDX SBOM and GitHub build-provenance attestation.
 
 ### Changed
 
-- net10 line coverage is now ~92% (60 tests on net10; 43 on net8/net9).
-- Documentation refreshed (README getting-started/migration/demo sections,
-  KNOWN-GAPS).
+- net10 line coverage is now ~94% (71 tests on net10; 49 on net8/net9).
+- `docs/MIGRATION.md` rewritten as a step-by-step transparent-migration guide
+  (PBKDF2 path, bcrypt/scrypt path, work-factor tuning, rollback, FAQ).
+- `SECURITY.md` and `KNOWN-GAPS.md` refreshed: expanded KAT corpus, explicit
+  revocation contract, honest-statement updates.
+- `.csproj` package description and release notes expanded to reflect the
+  polished surface and supply-chain story.
 
 ## [0.2.0-preview.1] — 2026-06-02
 

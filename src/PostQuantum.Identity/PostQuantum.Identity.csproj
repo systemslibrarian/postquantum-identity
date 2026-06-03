@@ -23,14 +23,55 @@
     <Version>0.3.0-preview.1</Version>
     <Title>PostQuantum.Identity — post-quantum ASP.NET Core Identity</Title>
     <Authors>Paul Clark</Authors>
-    <Description>Post-quantum integration for ASP.NET Core Identity. Hashes passwords with Argon2id (PHC-formatted, secure-by-default work factors, transparent rehash-on-login) and issues post-quantum hybrid JWTs for authenticated users via PostQuantum.Jwt — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption. Drops into the standard Identity builder chain. Argon2id hashing runs on net8.0/net9.0/net10.0; the hybrid-token integration requires .NET 10. Preview release — not for production use.</Description>
+    <Description>Post-quantum integration for ASP.NET Core Identity. Replaces the default PBKDF2 password hasher with Argon2id (PHC-formatted, secure-by-default work factors, transparent rehash-on-login, one-line PBKDF2→Argon2id migration) and issues post-quantum hybrid JWTs for authenticated users via PostQuantum.Jwt — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption. Drops into the standard Identity builder chain (AddArgon2idPasswordHasher / AddArgon2idPasswordHasherWithMigration / AddPostQuantumTokens). Argon2id hashing runs on net8.0/net9.0/net10.0; the hybrid-token integration requires .NET 10. Pinned to spec with RFC 9106 §5.3 Known Answer Tests + reference-CLI PHC interop + sign-then-encrypt envelope KATs. Ships with a CycloneDX SBOM, GitHub build-provenance attestation, deterministic SourceLink builds, and CodeQL coverage. Preview release — not independently audited, not for production use. See https://github.com/systemslibrarian/postquantum-identity for migration guide and runnable samples.</Description>
     <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-identity</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/postquantum-identity</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>aspnetcore;identity;password-hashing;argon2;argon2id;jwt;post-quantum;pqc;ml-dsa;ml-kem;x-wing;hybrid;authentication;cryptography;security;fips-204;net8;net9;net10</PackageTags>
-    <PackageReleaseNotes>0.3.0-preview.1: Polish + assurance release. Adds Known Answer Tests (RFC 9106 Argon2id reference vector + reference-CLI PHC interop) and a comprehensive token security corpus (sign-then-encrypt roundtrip, multi-role arrays, reserved-claim protection, expiry/wrong-key/tamper/malformed rejection); ~92% line coverage on net10. Refreshed docs (README, MIGRATION.md, ADRs) and a second sample (MVC). No public API changes from 0.2. Still preview — NOT independently audited, NOT for production. See KNOWN-GAPS.md. Earlier: 0.2.0 added MigratingPasswordHasher (PBKDF2→Argon2id), kid rotation, AOT-clean claim path, embedded CycloneDX SBOM, CI/release workflows, benchmarks. 0.1.0 was the initial Argon2id hasher + hybrid-token service.</PackageReleaseNotes>
+    <PackageTags>aspnetcore;identity;aspnet-identity;password-hashing;argon2;argon2id;phc;owasp;jwt;jwt-token;post-quantum;pqc;quantum-resistant;ml-dsa;ml-kem;x-wing;hybrid-cryptography;authentication;cryptography;security;fips-204;sbom;cyclonedx;net8;net9;net10</PackageTags>
+    <PackageReleaseNotes>
+0.3.0-preview.1 — Polish + assurance release. No public API changes from 0.2.
+
+Cryptographic assurance:
+  - Argon2id KATs hardened: RFC 9106 §5.3 reference vector (incl. keyed + AD path),
+    canonical reference-`argon2`-CLI PHC string verification, wire-format pin of the
+    PHC emitter, and compute-then-format-then-verify roundtrips across the OWASP
+    2024 minimum / library default / stronger profile / documented minimum.
+  - Token Known Answer Tests added: JOSE header pinning (typ:JWT, alg:ML-DSA-65,
+    kid), registered-claim shape + timestamp consistency, single vs. multi-role
+    array shape, sign-then-encrypt envelope (5-seg JWE, alg:X-Wing, enc:A256GCM,
+    cty:JWT) with full validation roundtrip, and end-to-end recovered-claim
+    equality.
+
+Migration story:
+  - `docs/MIGRATION.md` rewritten as a step-by-step transparent-migration guide
+    with a PBKDF2 path, a bcrypt/scrypt path, work-factor tuning, a rollback
+    section, and an FAQ. One-line registration via
+    AddArgon2idPasswordHasherWithMigration.
+
+Reference samples elevated:
+  - PostQuantum.Identity.Demo (minimal API): adds /refresh (with old-jti
+    revocation), /logout, /.well-known/pq-jwks key discovery, in-memory
+    revocation middleware, ProblemDetails error responses, and per-endpoint
+    walkthrough docs.
+  - PostQuantum.Identity.Mvc.Demo (controllers): same elevated flows expressed
+    with attribute routing.
+
+Docs and supply chain:
+  - README adds "When to use this library", a Comparison table vs. default
+    Identity / Argon2id-alone / hand-rolled PQ JWT, and a Supply chain section
+    with verification commands (SBOM + gh attestation).
+  - SECURITY.md / KNOWN-GAPS.md refreshed with the expanded KAT corpus, the
+    revocation contract, and the honest-statement updates.
+
+Still preview — NOT independently audited, NOT for production use. See
+KNOWN-GAPS.md.
+
+Earlier: 0.2.0 added MigratingPasswordHasher (PBKDF2→Argon2id), kid rotation,
+AOT-clean claim path, embedded CycloneDX SBOM, CI/release workflows, benchmarks.
+0.1.0 was the initial Argon2id hasher + hybrid-token service.
+    </PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © Paul Clark</Copyright>
     <NeutralLanguage>en-US</NeutralLanguage>

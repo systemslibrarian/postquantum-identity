@@ -1,14 +1,32 @@
 using System.Globalization;
+using System.Text;
 using Konscious.Security.Cryptography;
+using PostQuantum.Identity.Internal;
 using Xunit;
 
 namespace PostQuantum.Identity.Tests;
 
 /// <summary>
-/// Known Answer Tests (KATs) proving the Argon2id engine this library builds on
-/// produces spec-correct output, and that our PHC verification interoperates with
-/// hashes produced by the reference <c>argon2</c> tooling.
+/// Known Answer Tests (KATs) for the Argon2id surface. These pin our engine,
+/// PHC format, and verification path to published cryptographic vectors so that
+/// any drift from the spec — or from the de-facto Argon2 interop format used by
+/// the reference CLI and libsodium — fails the build.
 /// </summary>
+/// <remarks>
+/// <para>Three layers of assurance are pinned here:</para>
+/// <list type="number">
+///   <item>The RFC 9106 §5.3 Argon2id reference vector (keyed + associated-data
+///         path) — proves the underlying Argon2id computation matches the
+///         standard, including the rarely-tested secret and AD branches.</item>
+///   <item>A canonical reference-<c>argon2</c>-CLI PHC string that must verify
+///         through our hasher — proves PHC parsing and Argon2id compute together
+///         are wire-compatible with the standard tooling.</item>
+///   <item>Compute-then-format round-trips across multiple work-factor profiles
+///         (OWASP minimum, RFC 9106 second recommended, libsodium MODERATE-ish) —
+///         proves the PHC emitter and parser produce strings that any
+///         spec-compliant verifier (including our own) accepts.</item>
+/// </list>
+/// </remarks>
 public class Argon2idKnownAnswerTests
 {
     private static byte[] Repeat(byte value, int count)
@@ -87,9 +105,9 @@ public class Argon2idKnownAnswerTests
     [Fact]
     public void Reference_cli_raw_tag_matches()
     {
-        using var argon2 = new Argon2id(System.Text.Encoding.ASCII.GetBytes("password"))
+        using var argon2 = new Argon2id(Encoding.ASCII.GetBytes("password"))
         {
-            Salt = System.Text.Encoding.ASCII.GetBytes("somesalt"),
+            Salt = Encoding.ASCII.GetBytes("somesalt"),
             DegreeOfParallelism = 1,
             Iterations = 2,
             MemorySize = 65536,
@@ -98,5 +116,102 @@ public class Argon2idKnownAnswerTests
         byte[] tag = argon2.GetBytes(32);
         byte[] expected = FromHex("09316115d5cf24ed5a15a31a3ba326e5cf32edc24702987c02b6566f61913cf7");
         Assert.Equal(expected, tag);
+    }
+
+    /// <summary>
+    /// PHC emitter pins the wire format to a known shape. With a fixed
+    /// password / salt / parameters / tag, the emitted string must exactly equal
+    /// the reference-CLI PHC encoding — this catches any drift in the formatter
+    /// (segment count, version field, comma-ordering, padding stripping).
+    /// </summary>
+    [Fact]
+    public void Phc_emitter_pins_reference_cli_wire_format()
+    {
+        const string expectedPhc =
+            "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc";
+
+        // Compute the same tag the reference CLI did, then format through our emitter.
+        byte[] salt = Encoding.ASCII.GetBytes("somesalt");
+        using var argon2 = new Argon2id(Encoding.ASCII.GetBytes("password"))
+        {
+            Salt = salt,
+            DegreeOfParallelism = 1,
+            Iterations = 2,
+            MemorySize = 65536,
+        };
+        byte[] tag = argon2.GetBytes(32);
+
+        var opts = new Argon2idOptions { MemorySizeKib = 65536, Iterations = 2, DegreeOfParallelism = 1 };
+        string emitted = PhcString.Format(opts, salt, tag);
+
+        Assert.Equal(expectedPhc, emitted);
+    }
+
+    /// <summary>
+    /// Compute-then-format-then-verify cycle across multiple published-style
+    /// work-factor profiles. For each, we compute the raw tag with Konscious,
+    /// emit a PHC string, parse it back, and confirm the parsed parameters and
+    /// tag bytes match the input — proving emitter + parser are exact inverses
+    /// on every realistic profile we expect to see in the wild.
+    /// </summary>
+    [Theory]
+    [InlineData(19456, 2, 1, 16, 32)] // OWASP 2024 minimum (Argon2id, 19 MiB, t=2)
+    [InlineData(65536, 3, 1, 16, 32)] // Library default / RFC 9106 second profile shape
+    [InlineData(131072, 4, 1, 16, 32)] // Stronger / latency-tolerant deployments
+    [InlineData(8192, 1, 1, 16, 16)]   // Documented minimum allowed by Argon2idOptions
+    public void Phc_roundtrips_for_published_work_factor_profiles(
+        int memoryKib, int iterations, int parallelism, int saltLen, int tagLen)
+    {
+        byte[] password = Encoding.UTF8.GetBytes("correct horse battery staple");
+        byte[] salt = Repeat(0x5A, saltLen);
+
+        using var argon2 = new Argon2id(password)
+        {
+            Salt = salt,
+            DegreeOfParallelism = parallelism,
+            Iterations = iterations,
+            MemorySize = memoryKib,
+        };
+        byte[] tag = argon2.GetBytes(tagLen);
+
+        var opts = new Argon2idOptions
+        {
+            MemorySizeKib = memoryKib,
+            Iterations = iterations,
+            DegreeOfParallelism = parallelism,
+            SaltSizeBytes = saltLen,
+            HashSizeBytes = tagLen,
+        };
+
+        string phc = PhcString.Format(opts, salt, tag);
+        Assert.True(PhcString.TryParse(phc, out PhcString? parsed));
+        Assert.NotNull(parsed);
+        Assert.Equal(memoryKib, parsed!.MemorySizeKib);
+        Assert.Equal(iterations, parsed.Iterations);
+        Assert.Equal(parallelism, parsed.DegreeOfParallelism);
+        Assert.Equal(salt, parsed.Salt);
+        Assert.Equal(tag, parsed.Hash);
+
+        // And the hasher itself accepts the round-tripped string for the same password.
+        var hasher = new Argon2idPasswordHasher(opts);
+        Assert.True(hasher.Verify("correct horse battery staple", phc).Success);
+    }
+
+    /// <summary>
+    /// Single-byte tamper of the tag in a known-good PHC string must fail to
+    /// verify, demonstrating the fail-closed property of the verification path.
+    /// </summary>
+    [Fact]
+    public void Single_byte_tag_tamper_rejects_verification()
+    {
+        const string goodPhc =
+            "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc";
+
+        // Flip the last meaningful character of the tag segment.
+        char flipped = goodPhc[^1] == 'A' ? 'B' : 'A';
+        string tampered = goodPhc[..^1] + flipped;
+
+        var hasher = new Argon2idPasswordHasher(TestDefaults.FastOptions());
+        Assert.False(hasher.Verify("password", tampered).Success);
     }
 }

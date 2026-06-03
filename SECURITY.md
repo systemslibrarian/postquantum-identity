@@ -1,9 +1,9 @@
 # Security Policy
 
 PostQuantum.Identity is **preview software** (`0.x.y-preview.z`). It is not yet
-suitable for production use and has not been independently audited. This document
-states the security model honestly so you can make an informed decision before
-relying on it.
+suitable for production use and has not been independently audited. This
+document states the security model honestly so you can make an informed
+decision before relying on it.
 
 ## Supported versions
 
@@ -18,46 +18,55 @@ During the `0.3.0-preview.*` series only the most recent preview receives fixes.
 
 ## Reporting a vulnerability
 
-Please report security issues **privately** — do not open a public issue for an
-exploitable flaw.
+Please report security issues **privately** — do not open a public issue for
+an exploitable flaw.
 
 - Use GitHub's **"Report a vulnerability"** (Security → Advisories) on the
   repository, **or**
 - email the maintainer listed on the GitHub profile.
 
-Please include a description, affected version, and a reproduction if possible.
-We aim to acknowledge within **5 business days**. As an unfunded preview project,
-timelines are best-effort and stated honestly rather than promised.
+Please include a description, affected version, and a reproduction if
+possible. We aim to acknowledge within **5 business days**. As an unfunded
+preview project, timelines are best-effort and stated honestly rather than
+promised.
 
 ## Threat model
 
 **Goals**
 
 - **Password confidentiality at rest.** Stored credentials are Argon2id PHC
-  hashes with secure-by-default, memory-hard work factors. A database breach does
-  not hand the attacker plaintext passwords.
+  hashes with secure-by-default, memory-hard work factors. A database breach
+  does not hand the attacker plaintext passwords.
 - **Transparent strengthening.** When work factors are raised, existing hashes
-  verify and report `SuccessRehashNeeded`, so Identity upgrades them on the next
-  login — no window where old, weaker hashes silently persist as "current".
+  verify and report `SuccessRehashNeeded`, so Identity upgrades them on the
+  next login — no window where old, weaker hashes silently persist as
+  "current".
 - **Token integrity & authenticity** via ML-DSA-65 signatures (FIPS 204).
 - **Confidentiality (optional)** via X-Wing key agreement + AES-256-GCM, where
-  the AES key is the X-Wing shared secret. Confidentiality holds unless **both**
-  X25519 and ML-KEM-768 are broken.
+  the AES key is the X-Wing shared secret. Confidentiality holds unless
+  **both** X25519 and ML-KEM-768 are broken.
 - **Fail-closed behavior.** Malformed stored hashes never verify. Every token
   validation failure raises. There is no unsigned path and no `alg: none`.
+- **Reserved-claim immunity.** User-supplied claims cannot overwrite the seven
+  reserved claims (`iss/sub/aud/exp/nbf/iat/jti`); they are filtered server-
+  side and a tampered store cannot weaponize them through the issuance path.
 
 **Non-goals / out of scope**
 
 - **Key management & storage.** Generating, protecting, rotating, and
   distributing the ML-DSA signing key (and any X-Wing recipient key) is the
   caller's responsibility. This library never persists key material.
-- **Peppering / keyed hashing.** This package's Argon2id core does not apply a
-  secret pepper. If you need that, use the standalone
+- **Token revocation.** Each token carries a unique `jti` but enforcement of
+  a revocation list is the caller's concern. The demo wires an in-memory
+  list as a reference; production needs a durable store with a TTL matching
+  the token lifetime.
+- **Peppering / keyed hashing.** This package's Argon2id core does not apply
+  a secret pepper. If you need that, use the standalone
   [`argon2id-passwordhasher`](https://github.com/systemslibrarian/argon2id-passwordhasher)
   package.
-- **Replay protection.** `jti` is included in issued tokens but enforcement is a
-  property of the validator/replay cache you configure in PostQuantum.Jwt, not of
-  this package.
+- **Replay protection.** `jti` is included in issued tokens but enforcement is
+  a property of the validator/replay cache you configure in PostQuantum.Jwt,
+  not of this package.
 - **Side-channel resistance beyond the underlying primitives.** We rely on the
   constant-time properties of the .NET BCL, BouncyCastle (via PostQuantum.Jwt),
   and Konscious's Argon2id; we add no guarantees of our own beyond using
@@ -83,37 +92,84 @@ minimum and follow the RFC 9106 second recommended profile. Construction throws
 for parameters below the documented minimums (8 MiB / t≥1 / p≥1 / 16-byte salt /
 16-byte tag).
 
+## Cryptographic assurance
+
+The Argon2id path is covered by unit tests (round-trip, wrong-password,
+fail-closed PHC parsing, rehash detection) **and a multi-layer Known Answer
+Test corpus**:
+
+- **RFC 9106 §5.3 reference vector** including the rarely-tested keyed +
+  associated-data branches. Proves the underlying compute matches the
+  standard.
+- **Canonical reference-`argon2`-CLI PHC string** must verify through our
+  hasher. Proves PHC parse + Argon2id compute are wire-compatible with the
+  standard tooling.
+- **Wire-format pin of the PHC emitter** on the same vector. Catches drift in
+  segment count, version field, comma-ordering, padding-stripping.
+- **Compute-then-format-then-verify roundtrips** across OWASP 2024 minimum,
+  the library default / RFC 9106 second profile, a stronger profile, and the
+  documented minimum allowed by `Argon2idOptions`.
+
+The hybrid-token path is covered end-to-end against the genuine
+`PqJwtValidator`, with:
+
+- **Sign-then-encrypt envelope KAT** — 5-segment compact JWE, outer header
+  declares `alg:X-Wing`, `enc:A256GCM`, `cty:JWT`, the inner JWS validates.
+- **Roundtrip KAT** — recovered claim values byte-for-byte equal the input
+  (sub, name, email, role, custom claims).
+- **Structural header / payload KATs** — `typ:JWT`, `alg:ML-DSA-65`, optional
+  `kid`; registered claim set with `iat ≤ exp`, lifetime exact, unique
+  `jti` per issuance.
+- **Multi-role array shape KAT** — single role → string, multiple → array.
+- **Reserved-claim override protection** — a user-claim named `sub` cannot
+  hijack the subject.
+- **Fail-closed corpus** — rejection of expired / wrong-key /
+  per-segment-tampered / malformed tokens.
+
+(Token-level cryptographic KATs — ML-DSA, X-Wing, ML-KEM, AES-GCM — live in
+PostQuantum.Jwt and its dependencies.)
+
 ## Dependency rationale
 
-- **Konscious.Security.Cryptography.Argon2** — a widely used C# implementation of
-  the Argon2 1.3 spec. We deliberately did **not** hand-roll Argon2id.
+- **Konscious.Security.Cryptography.Argon2** — a widely used C# implementation
+  of the Argon2 1.3 spec. We deliberately did **not** hand-roll Argon2id.
 - **Microsoft.Extensions.Identity.Core** — the framework-agnostic Identity
   contracts (`IPasswordHasher<TUser>`, `UserManager<TUser>`, `IdentityBuilder`).
   No web host or EF dependency is pulled into the library.
 - **PostQuantum.Jwt** (net10 only) — the hybrid JWT engine. Its own crypto
-  dependencies (BouncyCastle for X25519/SHA3-256; BCL for ML-DSA/ML-KEM/AES-GCM)
-  are documented in that project's SECURITY.md.
+  dependencies (BouncyCastle for X25519/SHA3-256; BCL for ML-DSA/ML-KEM/AES-
+  GCM) are documented in that project's SECURITY.md.
+
+## Supply chain
+
+- **Embedded SBOM.** Every `.nupkg` contains a CycloneDX SBOM (`bom.json`)
+  generated across all target frameworks; inspect with
+  `unzip -p PostQuantum.Identity.<v>.nupkg bom.json`.
+- **Build provenance attestation.** The release workflow attaches a GitHub
+  artifact attestation to every published `.nupkg` and `.snupkg`, so
+  consumers can verify the package was built from this repo at a specific
+  commit:
+
+  ```bash
+  gh attestation verify PostQuantum.Identity.<v>.nupkg --owner systemslibrarian
+  ```
+
+- **Deterministic, SourceLink-enabled builds.** `Deterministic=true`,
+  `ContinuousIntegrationBuild=true` under CI, embedded repository URL, and
+  `.snupkg` symbols. Stack traces map back to a known commit.
+- **CodeQL** runs on every push and pull request; results land in the
+  repository's Security tab.
+- **Dependabot** surfaces upstream bumps as PRs.
 
 ## Honesty statement
 
 This is preview software written in the open. It has **not** been audited.
 
-The Argon2id path is covered by unit tests (round-trip, wrong-password,
-fail-closed PHC parsing, rehash detection) **and Known Answer Tests**: the
-RFC 9106 §5.3 reference vector (including the keyed + associated-data path) and
-the canonical reference-`argon2`-CLI PHC string, which must verify through our
-hasher — proving the engine is spec-correct and our PHC parsing is wire-compatible
-with standard tooling.
-
-The hybrid-token path is covered end-to-end against the genuine `PqJwtValidator`,
-with a fail-closed corpus: sign-then-encrypt roundtrip, reserved-claim override
-protection, and rejection of expired / wrong-key / per-segment-tampered /
-malformed tokens. (Token-level cryptographic KATs — ML-DSA/X-Wing vectors — live
-in PostQuantum.Jwt itself.)
-
-Until a 1.0 release and an external review, treat this library as suitable for
-experimentation only. Known limitations are tracked transparently in
-[`KNOWN-GAPS.md`](KNOWN-GAPS.md).
+Until a 1.0 release and an external review, treat this library as suitable
+for experimentation only. Known limitations are tracked transparently in
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md), and every "missing thing" exists in the
+sample code, the docs, or the open issue tracker — not silently in some
+private TODO file.
 
 ---
 

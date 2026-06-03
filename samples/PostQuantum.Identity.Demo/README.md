@@ -1,20 +1,30 @@
-# PostQuantum.Identity demo
+# PostQuantum.Identity demo — minimal API
 
-A minimal-API ASP.NET Core app showing **real** ASP.NET Core Identity wired to
-PostQuantum.Identity:
+A **production-shaped** reference application: real ASP.NET Core Identity wired
+to PostQuantum.Identity, exercising every flow you would actually use in a
+service that issues post-quantum JWTs from passwords.
 
-- **Argon2id** password hashing (`AddArgon2idPasswordHasher<IdentityUser>`)
-- **Post-quantum hybrid token** issuance (`AddPostQuantumTokens<IdentityUser>`)
-- Token **validation through the `PqJwtBearer` authentication handler** — the
-  `/me` endpoint is `[Authorize]`'d, not validated by hand
-- **`kid`-based key rotation** — a two-key ring (`k1` previous, `k2` current);
-  new tokens are signed with `k2` and stamped with its `kid`, and the verifier
-  resolves the right public key by `kid`, so both keys validate
+## What this sample demonstrates
 
-User data is stored in an in-memory EF Core database, so there is nothing to
+| Flow | Endpoint | What you learn from it |
+|------|----------|------------------------|
+| **Registration** | `POST /register` | Argon2id password hashing through `IPasswordHasher<TUser>`; validated input via `ProblemDetails`. |
+| **Login** | `POST /login` | Constant-time password verification, then issuance of an ML-DSA-65–signed PQ-JWT; no account enumeration leak. |
+| **Authenticated `/me`** | `GET /me` (`[Authorize]`) | Token validation through the `PqJwtBearer` handler — fail-closed on tamper / expiry / wrong key. |
+| **Refresh** | `POST /refresh` (`[Authorize]`) | Rotate a token before expiry; **revokes the old `jti`** so a stolen near-expiry token can't outlive its replacement. |
+| **Logout** | `POST /logout` (`[Authorize]`) | Adds the current `jti` to an in-memory revocation list; the next call with that token returns `401`. |
+| **Key rotation** | implicit via `kid` header | Two-key ring (`k1` previous, `k2` current). New tokens are signed with `k2` and stamped with its `kid`; the verifier resolves the right public key by `kid`, so both keys validate. |
+| **Public-key discovery** | `GET /.well-known/pq-jwks` | Exposes the ML-DSA-65 verification keys (kid → SPKI) so downstream services can validate independently. |
+
+User data lives in an in-memory EF Core database, so there is nothing to
 install. The ML-DSA-65 keys are generated at startup for the lifetime of the
-process (a demo convenience — real systems provision and rotate keys out of band,
-and verifiers hold only the public halves).
+process (a demo convenience — real systems provision and rotate keys out of
+band, and verifiers hold only the public halves).
+
+The revocation list is a `ConcurrentDictionary<string, DateTimeOffset>` (in
+memory). A real service would swap that for Redis / a DB table with a TTL
+matching the token lifetime; the API contract — "is this `jti` revoked?" — is
+the same regardless of the backing store.
 
 ## Run
 
@@ -26,37 +36,85 @@ LD_LIBRARY_PATH=/opt/conda/lib ASPNETCORE_URLS=http://localhost:5199 \
 ```
 
 If ML-DSA is unavailable, the app still runs and hashes passwords; the token
-endpoints return `503` with a clear message.
+endpoints return `503 Service Unavailable` with a clear `ProblemDetails` body.
 
-## Try it
+## End-to-end walkthrough
 
 ```bash
-# 1. Register (password is hashed with Argon2id)
-curl -s -X POST localhost:5199/register \
+BASE=http://localhost:5199
+
+# 1. Register (password is hashed with Argon2id).
+curl -s -X POST $BASE/register \
   -H 'Content-Type: application/json' \
   -d '{"username":"ada","password":"Lovelace#1843"}'
 
-# 2. Log in -> receive a post-quantum hybrid token (ML-DSA-65 signed)
-TOKEN=$(curl -s -X POST localhost:5199/login \
+# 2. Log in -> receive a post-quantum hybrid token (ML-DSA-65 signed).
+LOGIN=$(curl -s -X POST $BASE/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"ada","password":"Lovelace#1843"}' | jq -r .token)
+  -d '{"username":"ada","password":"Lovelace#1843"}')
+TOKEN=$(echo "$LOGIN" | jq -r .token)
+echo "kid=$(echo "$LOGIN" | jq -r .kid), exp=$(echo "$LOGIN" | jq -r .expires_in)s"
 
-# 3. Call a protected endpoint -> the token is validated, claims returned
-curl -s localhost:5199/me -H "Authorization: Bearer $TOKEN"
+# 3. Call a protected endpoint -> the token is validated, claims returned.
+curl -s $BASE/me -H "Authorization: Bearer $TOKEN" | jq
+
+# 4. Refresh — get a fresh token; the OLD jti is revoked atomically.
+REFRESH=$(curl -s -X POST $BASE/refresh -H "Authorization: Bearer $TOKEN")
+NEW_TOKEN=$(echo "$REFRESH" | jq -r .token)
+
+# The OLD token now returns 401 (rotated_from is on the revocation list).
+curl -s -o /dev/null -w "old token after refresh -> %{http_code}\n" \
+  $BASE/me -H "Authorization: Bearer $TOKEN"
+curl -s -o /dev/null -w "new token after refresh -> %{http_code}\n" \
+  $BASE/me -H "Authorization: Bearer $NEW_TOKEN"
+
+# 5. Logout — explicitly revoke the current token.
+curl -s -X POST $BASE/logout -H "Authorization: Bearer $NEW_TOKEN"
+curl -s -o /dev/null -w "after logout -> %{http_code}\n" \
+  $BASE/me -H "Authorization: Bearer $NEW_TOKEN"
+
+# 6. Public-key discovery — for downstream verifiers.
+curl -s $BASE/.well-known/pq-jwks | jq '.keys[] | {kid, alg, kty}'
 ```
 
-Expected `/me` response:
+Expected behaviours:
 
-```json
-{
-  "subject": "<user-id>",
-  "name": "ada",
-  "issuer": "https://demo.postquantum-identity.local",
-  "expiresAt": "..."
-}
+- Wrong password → `401 Unauthorized`.
+- Tampered token → `401 Unauthorized` (handler fails closed).
+- Token after `/logout` or after the corresponding `/refresh` → `401`.
+- Expired token → `401`.
+- Empty / malformed JSON body → `400 Bad Request` with an RFC 7807
+  `ProblemDetails` payload.
+
+## Wiring at a glance
+
+```csharp
+builder.Services
+    .AddIdentityCore<IdentityUser>()
+    .AddArgon2idPasswordHasher<IdentityUser>(o => o.MemorySizeKib = 19456)
+    .AddEntityFrameworkStores<DemoIdentityContext>()
+    .AddPostQuantumTokens<IdentityUser>(o =>
+    {
+        o.SigningKey = signingKeyRing[CurrentKeyId]; // current ML-DSA-65 key
+        o.KeyId      = CurrentKeyId;                 // stamped into kid header
+        o.Issuer     = Issuer;
+        o.Audience   = Audience;
+        o.Lifetime   = TimeSpan.FromHours(1);
+    });
+
+builder.Services
+    .AddAuthentication(PqJwtBearerDefaults.AuthenticationScheme)
+    .AddPqJwtBearer(o => o.ValidationParameters = new PqJwtValidationParameters
+    {
+        // The kid resolver returns the right public key for the token's kid header.
+        SignatureKeyResolver = kid => verifyingKeyRing.GetValueOrDefault(kid ?? ""),
+        ValidIssuer = Issuer,
+        ValidAudience = Audience,
+    });
 ```
 
-A wrong password returns `401`; a tampered token returns `401` (fail-closed).
+The revocation middleware (post-authentication) checks `jti` against the
+in-memory list and short-circuits with `401` for revoked tokens.
 
 ---
 

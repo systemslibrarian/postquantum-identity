@@ -36,15 +36,26 @@ exactly what it provides.
 
 ### What's new in 0.3.0-preview.1
 
-- **Known Answer Tests** — Argon2id is checked against the RFC 9106 §5.3
-  reference vector and a reference-`argon2`-CLI PHC string verifies through our
-  hasher (proving spec-correctness + interop).
-- **Token security corpus** — sign-then-encrypt roundtrip, multi-role arrays,
-  reserved-claim protection, and fail-closed rejection of expired / wrong-key /
-  tampered / malformed tokens. ~92% line coverage on net10.
-- **Second sample** — a controller-based MVC API alongside the minimal-API demo.
-- Refreshed docs (getting-started, migration, ADRs). No public API changes from
-  0.2.
+- **Argon2id Known Answer Tests, hardened.** RFC 9106 §5.3 reference vector
+  (incl. keyed + AD), reference-`argon2`-CLI PHC string verifies through our
+  hasher, **PHC emitter wire-format pin**, and **compute → format → verify
+  roundtrips** across the OWASP 2024 minimum / library default / stronger /
+  documented-minimum profiles.
+- **Token KATs.** JOSE header pinned (`typ:JWT`, `alg:ML-DSA-65`, `kid`);
+  registered-claim shape + timestamp consistency; single vs. multi-role array
+  shape; **sign-then-encrypt envelope KAT** (5-seg JWE, `alg:X-Wing`,
+  `enc:A256GCM`, `cty:JWT`); end-to-end recovered-claim equality. ~94% line
+  coverage on net10 (71 tests on net10; 49 on net8/net9).
+- **Production-shaped samples.** Both demos add `/refresh` (with old-jti
+  revocation), `/logout`, in-memory revocation middleware, ProblemDetails
+  errors; minimal-API demo adds `/.well-known/pq-jwks` key discovery.
+- **Migration story rewritten.** [`docs/MIGRATION.md`](docs/MIGRATION.md) now
+  walks PBKDF2, bcrypt/scrypt, work-factor tuning, rollback, and an FAQ.
+- **README adds** "When to use this library", a Comparison table vs. default
+  Identity / Argon2id-alone / hand-rolled PQ JWT, and a Supply chain section
+  with verification commands.
+
+No public API changes from 0.2.
 
 Earlier highlights — **0.2:** `MigratingPasswordHasher` (PBKDF2→Argon2id), `kid`
 key rotation, AOT-clean claim path, embedded CycloneDX SBOM, CI/release
@@ -55,6 +66,7 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 ## Table of contents
 
 - [Why](#why)
+- [When to use this library](#when-to-use-this-library)
 - [Install](#install)
 - [60-second tour](#60-second-tour)
 - [Password hashing (all runtimes)](#password-hashing-all-runtimes)
@@ -62,7 +74,9 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 - [Try the demo](#try-the-demo)
 - [Public API at a glance](#public-api-at-a-glance)
 - [How it fits the PostQuantum.* family](#how-it-fits-the-postquantum-family)
+- [Comparison with alternatives](#comparison-with-alternatives)
 - [Security posture](#security-posture)
+- [Supply chain](#supply-chain)
 - [Compatibility](#compatibility)
 - [Building from source](#building-from-source)
 - [License](#license)
@@ -86,6 +100,50 @@ PostQuantum.Identity combines the two into a single, natural extension of the
 Identity builder chain — Argon2id where Identity expects an `IPasswordHasher<TUser>`,
 and a token service that turns an authenticated user into a PostQuantum.Jwt
 hybrid token.
+
+---
+
+## When to use this library
+
+Three honest checks before you adopt this package.
+
+### ✅ Use PostQuantum.Identity when…
+
+- **You ship ASP.NET Core Identity** and want to migrate the password hasher to
+  Argon2id with a one-line registration change and zero migration job
+  — see [`docs/MIGRATION.md`](docs/MIGRATION.md).
+- **You issue JWTs to your own services** and want hybrid (classical + PQ)
+  signatures *now*, ahead of the standards landing. You **own both the issuer
+  and every verifier** — there is no third-party JWT library in your trust
+  chain that needs to understand `alg = ML-DSA-65`.
+- **You want a small, focused dependency**: framework-agnostic Identity core,
+  Argon2id from a vetted library, ML-DSA / ML-KEM from the BCL. No mystery
+  meat, no hand-rolled crypto.
+
+### ⚠️ Use the standalone Argon2id package instead when…
+
+- You **don't ship Identity at all** (a console app, a tool, a non-ASP.NET
+  service). Reach for [`Argon2id.PasswordHasher`](https://github.com/systemslibrarian/argon2id-passwordhasher)
+  directly — it's a richer Argon2id surface (peppering, a more general
+  migration adapter, benchmarks) without the Identity contracts.
+- You need **a server-held pepper / keyed hashing**. This package's Argon2id
+  core is intentionally salt-and-parameters-only; the standalone package adds
+  a `PepperRing` for HSM-style secret mixing.
+
+### ⛔ Don't use PostQuantum.Identity when…
+
+- **You need the issued tokens to validate in third-party JWT tooling**
+  (`System.IdentityModel.Tokens.Jwt`, Auth0/Okta SDKs, OIDC providers). The
+  `alg = ML-DSA-65` identifier is intentionally non-IANA — the spec hasn't
+  landed. Generic libraries will reject these tokens.
+- **You're waiting for the .NET PQC story to fully mature.** That's a
+  reasonable position to hold; this package exists for people who want to
+  shorten the harvest-now-decrypt-later window today, with eyes open, in a
+  closed system they fully control.
+- **You can't tolerate a preview library.** This is `0.x.y-preview.z`, has
+  **not** been independently audited, and the public API may shift before
+  1.0. See [`KNOWN-GAPS.md`](KNOWN-GAPS.md) for the honest list of what's
+  unfinished or unverified.
 
 ---
 
@@ -284,6 +342,33 @@ PostQuantum.Identity is the ASP.NET Core Identity layer of a broader family:
 
 ---
 
+## Comparison with alternatives
+
+| | **Default Identity** (PBKDF2) | **Argon2id alone**<br/>(`Argon2id.PasswordHasher`) | **PostQuantum.Identity** (this) | **Hand-rolled PQ JWT** |
+|---|:---:|:---:|:---:|:---:|
+| Password hashing | PBKDF2 (CPU-hard only) | Argon2id ✅ | Argon2id ✅ | — |
+| OWASP-recommended hash | ❌ | ✅ | ✅ | — |
+| `IPasswordHasher<TUser>` adapter | built-in | needs glue | **built-in** | — |
+| PBKDF2 → Argon2id transparent migration | n/a | manual adapter | **one-line registration** | — |
+| Quantum-resistant token signature | ❌ (RSA/ECDSA) | — | **ML-DSA-65 (FIPS 204)** | depends |
+| Hybrid (classical + PQ) confidentiality | ❌ | — | **X-Wing + AES-256-GCM** | depends |
+| Fail-closed validation (no `alg: none`) | n/a | — | ✅ | depends on yours |
+| Validates in generic JWT libraries | ✅ | n/a | **❌** (non-IANA `alg`) | depends |
+| Independent audit | n/a (Microsoft-shipped) | ❌ (preview) | **❌ (preview, stated)** | depends |
+| Supply chain — SBOM + provenance | n/a | embedded SBOM | **embedded SBOM + GitHub attestation** | yours to provide |
+| RFC 9106 Known Answer Tests pinned in CI | n/a | ✅ | **✅ (RFC 9106 §5.3 + CLI interop + emitter pin)** | varies |
+
+**How to read this table.** Default Identity is fine for many apps today —
+its weakness is PBKDF2 and the absence of any post-quantum story, not
+buggy code. The standalone Argon2id package is the right pick when you're
+*not* on Identity. Hand-rolling a PQ JWT is possible (the BCL primitives
+are there) but takes you into wire-format, KAT-pinning, and supply-chain
+territory you probably don't want to own. PostQuantum.Identity puts the
+hardened pieces of all three on Identity's builder chain with one line of
+registration each.
+
+---
+
 ## Security posture
 
 - **Fail-closed, always.** Malformed stored hashes never verify; token validation
@@ -303,6 +388,50 @@ PostQuantum.Identity is the ASP.NET Core Identity layer of a broader family:
 
 Full detail in [`SECURITY.md`](SECURITY.md). Honest list of what is **not** done
 yet in [`KNOWN-GAPS.md`](KNOWN-GAPS.md).
+
+---
+
+## Supply chain
+
+The same hygiene we apply to the code applies to the package you install:
+
+- **SBOM in every `.nupkg`.** Every `dotnet pack` emits a CycloneDX SBOM
+  (`bom.json`) and embeds it at the root of the package, generated from the
+  *multi-target* dependency graph (no TFM collapses to keep transitive deps
+  intact). Inspect with `unzip -p PostQuantum.Identity.<v>.nupkg bom.json`.
+- **Build provenance attestation.** The
+  [`release.yml`](.github/workflows/release.yml) workflow attaches a GitHub
+  artifact attestation to every published `.nupkg` / `.snupkg` via
+  [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance),
+  so consumers can verify the package was built from this repo at a specific
+  commit with `gh attestation verify`.
+- **Deterministic builds with SourceLink.** The repo sets `Deterministic=true`,
+  `ContinuousIntegrationBuild=true` under CI, embeds the GitHub repository URL,
+  and ships `.snupkg` symbols. Stack traces from a published `.nupkg` map back
+  to a known commit in this repo.
+- **Pinned dependency surface.** The library depends on:
+  - `Konscious.Security.Cryptography.Argon2` (Argon2 1.3 spec impl) — every
+    TFM,
+  - `Microsoft.Extensions.Identity.Core` (Identity contracts; no web host, no
+    EF) — every TFM,
+  - `PostQuantum.Jwt` — **net10 only**, gated by `#if NET10_0_OR_GREATER`.
+
+  Dependabot is configured (see `.github/dependabot.yml`) to surface upstream
+  bumps as PRs.
+- **CodeQL on every PR.** [`codeql.yml`](.github/workflows/codeql.yml) scans
+  on every push and pull request; results land in GitHub's Security tab.
+
+How to verify a package you pulled from NuGet:
+
+```bash
+# 1. Inspect the embedded SBOM.
+nuget install PostQuantum.Identity -Version 0.3.0-preview.1
+unzip -p PostQuantum.Identity.0.3.0-preview.1.nupkg bom.json | jq '.components | length'
+
+# 2. Verify the GitHub build-provenance attestation for the same .nupkg.
+gh attestation verify PostQuantum.Identity.0.3.0-preview.1.nupkg \
+  --owner systemslibrarian
+```
 
 ---
 

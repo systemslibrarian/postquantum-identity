@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -6,12 +7,14 @@ using PostQuantum.Jwt;
 using PostQuantum.Jwt.AspNetCore;
 
 // ---------------------------------------------------------------------------
-// PostQuantum.Identity — controller-based (MVC) sample. Same wiring as the
-// minimal-API demo, expressed with attribute-routed controllers:
+// PostQuantum.Identity — controller-based (MVC) sample. Same production-shape
+// wiring as the minimal-API demo, expressed with attribute-routed controllers:
 //
 //   POST /account/register   { "username": "...", "password": "..." }
 //   POST /account/login      { "username": "...", "password": "..." }  -> PQ token
-//   GET  /me                  (Authorization: Bearer <token>)          -> [Authorize]
+//   POST /account/refresh     (Authorization: Bearer <valid token>)   -> fresh token
+//   POST /account/logout      (Authorization: Bearer <valid token>)   -> revoke jti
+//   GET  /me                  (Authorization: Bearer <valid token>)   -> [Authorize]
 //
 // Argon2id password hashing works on every runtime; token issuance/validation
 // needs the .NET 10 BCL post-quantum primitives (OpenSSL 3.5+ on Linux).
@@ -20,12 +23,17 @@ using PostQuantum.Jwt.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<DemoIdentityContext>(o => o.UseInMemoryDatabase("pq-identity-mvc-demo"));
 
-var identity = builder.Services
+IdentityBuilder identity = builder.Services
     .AddIdentityCore<IdentityUser>(o => o.Password.RequiredLength = 8)
     .AddArgon2idPasswordHasher<IdentityUser>(o => o.MemorySizeKib = 19456)
     .AddEntityFrameworkStores<DemoIdentityContext>();
+
+// In-memory revocation list (a real service would use Redis / a DB table with TTL).
+var revokedJtis = new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+builder.Services.AddSingleton(revokedJtis);
 
 // One signing key for the process lifetime (provision/rotate out of band in prod).
 MLDsa? signingKey = MLDsa.IsSupported ? MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65) : null;
@@ -44,6 +52,8 @@ if (signingKey is not null)
         .AddAuthentication(PqJwtBearerDefaults.AuthenticationScheme)
         .AddPqJwtBearer(o => o.ValidationParameters = new PqJwtValidationParameters
         {
+            // For the MVC sample we hold a single key; the minimal-API sample shows
+            // the kid-resolver pattern for a multi-key ring.
             SignatureVerificationKey = signingKey,
             ValidIssuer = TokenConstants.Issuer,
             ValidAudience = TokenConstants.Audience,
@@ -51,11 +61,34 @@ if (signingKey is not null)
     builder.Services.AddAuthorization();
 }
 
-var app = builder.Build();
+WebApplication app = builder.Build();
+
+app.UseStatusCodePages();
 
 if (signingKey is not null)
 {
     app.UseAuthentication();
+    // Reject any authenticated request whose token's jti has been revoked.
+    app.Use(async (ctx, next) =>
+    {
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            string? jti = ctx.User.FindFirst("jti")?.Value;
+            if (jti is not null && revokedJtis.ContainsKey(jti))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await ctx.Response.WriteAsJsonAsync(new
+                {
+                    type = "https://tools.ietf.org/html/rfc6750#section-3.1",
+                    title = "Token has been revoked",
+                    status = 401,
+                });
+                return;
+            }
+        }
+
+        await next();
+    });
     app.UseAuthorization();
 }
 
@@ -67,6 +100,7 @@ internal static class TokenConstants
 {
     public const string Issuer = "https://demo.postquantum-identity.local";
     public const string Audience = "api://mvc-demo";
+    public const string CurrentKeyId = "mvc-demo-1";
 }
 
 /// <summary>EF Core Identity store for the demo (in-memory).</summary>

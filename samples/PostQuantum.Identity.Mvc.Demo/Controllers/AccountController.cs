@@ -94,13 +94,16 @@ public sealed class AccountController(
             return Unauthorized();
         }
 
+        // Issue the new token BEFORE revoking the old jti. If issuance throws,
+        // the caller still has a working bearer token until natural expiry.
+        string newToken = await tokens.CreateTokenAsync(user);
+
         string? oldJti = User.FindFirst("jti")?.Value;
         if (oldJti is not null)
         {
             revokedJtis[oldJti] = DateTimeOffset.UtcNow;
         }
 
-        string newToken = await tokens.CreateTokenAsync(user);
         return Ok(new
         {
             token = newToken,

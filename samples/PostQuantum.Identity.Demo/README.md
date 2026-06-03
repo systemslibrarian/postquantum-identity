@@ -58,7 +58,8 @@ echo "kid=$(echo "$LOGIN" | jq -r .kid), exp=$(echo "$LOGIN" | jq -r .expires_in
 # 3. Call a protected endpoint -> the token is validated, claims returned.
 curl -s $BASE/me -H "Authorization: Bearer $TOKEN" | jq
 
-# 4. Refresh — get a fresh token; the OLD jti is revoked atomically.
+# 4. Refresh — get a fresh token; the OLD jti is revoked after issuance
+# succeeds, so a transient failure never leaves the caller token-less.
 REFRESH=$(curl -s -X POST $BASE/refresh -H "Authorization: Bearer $TOKEN")
 NEW_TOKEN=$(echo "$REFRESH" | jq -r .token)
 

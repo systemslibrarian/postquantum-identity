@@ -14,10 +14,20 @@ namespace PostQuantum.Identity.Mvc.Demo.Controllers;
 public sealed class MeController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Get() => Ok(new
+    public IActionResult Get()
     {
-        subject = User.FindFirst("sub")?.Value,
-        name = User.FindFirst("name")?.Value,
-        roles = User.FindAll("role").Select(c => c.Value).ToArray(),
-    });
+        string? expRaw = User.FindFirst("exp")?.Value;
+        DateTimeOffset? expiresAt = long.TryParse(expRaw, out long expUnix)
+            ? DateTimeOffset.FromUnixTimeSeconds(expUnix)
+            : null;
+
+        return Ok(new
+        {
+            subject = User.FindFirst("sub")?.Value,
+            name = User.FindFirst("name")?.Value,
+            roles = User.FindAll("role").Select(c => c.Value).ToArray(),
+            jti = User.FindFirst("jti")?.Value,
+            expiresAt = expiresAt?.ToString("O"),
+        });
+    }
 }

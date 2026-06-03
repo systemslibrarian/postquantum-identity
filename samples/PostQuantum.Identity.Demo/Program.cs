@@ -30,6 +30,7 @@ using PostQuantum.Jwt.AspNetCore;
 
 const string Issuer = "https://demo.postquantum-identity.local";
 const string Audience = "api://demo";
+TimeSpan TokenLifetime = TimeSpan.FromHours(1);
 string[] Endpoints =
 [
     "POST /register",
@@ -91,7 +92,7 @@ if (MLDsa.IsSupported)
         o.KeyId = CurrentKeyId;            // stamped into the token's `kid` header
         o.Issuer = Issuer;
         o.Audience = Audience;
-        o.Lifetime = TimeSpan.FromHours(1);
+        o.Lifetime = TokenLifetime;
     });
 
     // Validate incoming tokens with the standard auth pipeline. The resolver maps
@@ -214,7 +215,7 @@ app.MapPost("/login", async (
         token_type = "PQ-JWT",
         alg = "ML-DSA-65",
         kid = CurrentKeyId,
-        expires_in = (int)TimeSpan.FromHours(1).TotalSeconds,
+        expires_in = (int)TokenLifetime.TotalSeconds,
     });
 });
 
@@ -242,19 +243,23 @@ app.MapPost("/refresh", [Authorize] async (
         return Results.Unauthorized();
     }
 
+    // Issue the new token BEFORE revoking the old jti. If issuance throws,
+    // the caller still has a working bearer token until natural expiry.
+    string newToken = await tokens.CreateTokenAsync(user);
+
     string? oldJti = ctx.User.FindFirst("jti")?.Value;
     if (oldJti is not null)
     {
         revokedJtis[oldJti] = DateTimeOffset.UtcNow;
     }
 
-    string newToken = await tokens.CreateTokenAsync(user);
     return Results.Ok(new
     {
         token = newToken,
         token_type = "PQ-JWT",
         alg = "ML-DSA-65",
         kid = CurrentKeyId,
+        expires_in = (int)TokenLifetime.TotalSeconds,
         rotated_from = oldJti,
     });
 });
@@ -277,14 +282,22 @@ app.MapPost("/logout", [Authorize] (HttpContext ctx) =>
 // Protected by the PqJwtBearer scheme: the handler validates the token (resolving
 // the key by kid), the revocation middleware checks the jti, and HttpContext.User
 // is populated before this runs.
-app.MapGet("/me", [Authorize] (HttpContext ctx) => Results.Ok(new
+app.MapGet("/me", [Authorize] (HttpContext ctx) =>
 {
-    subject = ctx.User.FindFirst("sub")?.Value,
-    name = ctx.User.FindFirst("name")?.Value,
-    roles = ctx.User.FindAll("role").Select(c => c.Value).ToArray(),
-    jti = ctx.User.FindFirst("jti")?.Value,
-    expiresAt = ctx.User.FindFirst("exp")?.Value,
-}));
+    string? expRaw = ctx.User.FindFirst("exp")?.Value;
+    DateTimeOffset? expiresAt = long.TryParse(expRaw, out long expUnix)
+        ? DateTimeOffset.FromUnixTimeSeconds(expUnix)
+        : null;
+
+    return Results.Ok(new
+    {
+        subject = ctx.User.FindFirst("sub")?.Value,
+        name = ctx.User.FindFirst("name")?.Value,
+        roles = ctx.User.FindAll("role").Select(c => c.Value).ToArray(),
+        jti = ctx.User.FindFirst("jti")?.Value,
+        expiresAt = expiresAt?.ToString("O"),
+    });
+});
 
 // --- Public-key discovery ------------------------------------------------
 // Exposes the ML-DSA-65 verification keys so a downstream service can fetch

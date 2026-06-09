@@ -92,7 +92,7 @@ Still preview — NOT independently audited. See KNOWN-GAPS.md.
     <!-- For the opt-in AddPostQuantumPreflightLogging() hosted service. The
          abstractions package keeps the dep surface tiny — no full host runtime
          pulled in for callers who never opt in. -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 

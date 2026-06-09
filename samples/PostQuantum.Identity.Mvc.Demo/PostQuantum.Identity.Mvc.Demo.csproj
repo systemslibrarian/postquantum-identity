@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
-    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0-preview.1" />
+    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0-preview.10" />
   </ItemGroup>
 
   <ItemGroup>

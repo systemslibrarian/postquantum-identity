@@ -9,8 +9,10 @@ artifacts/
 # NuGet
 *.nupkg
 *.snupkg
-# Local NuGet API key — NEVER commit. The release workflow uses a GitHub secret
-# instead. This pattern catches both nuget.key and nuget.key.txt at repo root.
+# Local NuGet API key — NEVER commit. Publishing uses Trusted Publishing
+# (GitHub OIDC → short-lived key via NuGet/login), so no long-lived key should
+# exist anywhere — revoke any old one on nuget.org. These patterns stay as a
+# belt-and-braces guard for any stray local key file.
 nuget.key
 nuget.key.*
 *.nuget.key

@@ -88,12 +88,15 @@ jobs:
       # On Windows the runner has the native ML-KEM / ML-DSA primitives, so every
       # post-quantum test MUST run. If anything skipped, we are no longer proving
       # the cryptographic paths in CI — fail the job.
+      # The skip-count parsing lives in one script (scripts/count-skipped-tests.sh)
+      # so a `dotnet test` console-format change breaks visibly in one place —
+      # the script errors when no summary lines exist rather than reporting 0.
       - name: Require zero skipped tests on Windows (PQ paths must run)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          skipped=$(grep -E '^(Passed!|Failed!)' test-output.log | grep -oE 'Skipped:[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+          skipped=$(bash scripts/count-skipped-tests.sh test-output.log)
           echo "Total skipped across TFMs: $skipped"
           if [[ "$skipped" -ne 0 ]]; then
             echo "::error::Windows is the PQ-required lane; $skipped test(s) skipped (ML-KEM/ML-DSA unavailable?)."
@@ -148,13 +151,92 @@ jobs:
       - name: Require zero skipped tests on Linux (PQ paths must run)
         run: |
           set -euo pipefail
-          skipped=$(grep -E '^(Passed!|Failed!)' test-output.log | grep -oE 'Skipped:[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | tail -1)
-          echo "Skipped on net10 PQ lane: ${skipped:-unknown}"
-          if [[ -z "${skipped:-}" || "$skipped" -ne 0 ]]; then
-            echo "::error::Linux PQ-required lane: ${skipped:-?} test(s) skipped — OpenSSL 3.5+ should make ML-KEM/ML-DSA available."
+          skipped=$(bash scripts/count-skipped-tests.sh test-output.log)
+          echo "Skipped on net10 PQ lane: $skipped"
+          if [[ "$skipped" -ne 0 ]]; then
+            echo "::error::Linux PQ-required lane: $skipped test(s) skipped — OpenSSL 3.5+ should make ML-KEM/ML-DSA available."
             exit 1
           fi
           echo "PQ-required check passed on Linux: 0 skipped tests."
+
+  macos-discovery:
+    # Discovery, not enforcement — and deliberately NOT per-PR: macOS runners
+    # are the scarcest and most expensive, and the only unique signal here
+    # ("has the BCL macOS ML-DSA path lit up on the runner image?") changes
+    # per runner-image release, not per commit. Runs on pushes to main.
+    # Argon2id assurance lives in the Linux/Windows lanes; the PQ-required
+    # zero-skip gates are Windows and linux-pq-required.
+    if: github.event_name == 'push'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore and build (Release)
+        run: dotnet build -c Release
+
+      - name: Test net10 (Release)
+        run: |
+          set -o pipefail
+          dotnet test tests/PostQuantum.Identity.Tests/PostQuantum.Identity.Tests.csproj \
+            -c Release -f net10.0 --no-build --logger "console;verbosity=minimal" \
+            | tee test-output.log
+
+      - name: Report PQ test availability on macOS (informational)
+        run: |
+          set -euo pipefail
+          skipped=$(bash scripts/count-skipped-tests.sh test-output.log)
+          if [[ "$skipped" -ne 0 ]]; then
+            echo "::notice::macOS: $skipped PQ test(s) skipped — ML-DSA not available on this runner image yet. Argon2id suite ran fully."
+          else
+            echo "::notice::macOS: 0 skips — the full PQ token suite ran. Consider promoting macOS to a PQ-required lane and updating the README compatibility table."
+          fi
+
+  benchmarks:
+    # Argon2id benchmarks, tracked over time with a regression budget — the
+    # Roadmap-to-1.0 "benchmarks in CI" gate. Runs on pushes to main only:
+    # shared runners are too noisy for per-PR gating, and the job pushes its
+    # history to gh-pages (created on first run), which fork PRs can't do.
+    #
+    # Honesty about the budget: a 150% alert threshold on hosted runners
+    # catches step-change regressions (an accidental extra pass over memory,
+    # a quadratic slip) — it will NOT catch a quiet 10% drift. Precise
+    # comparisons still belong on pinned hardware with the full job
+    # (benchmarks/README.md).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push benchmark history to the gh-pages branch
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Run Argon2id benchmarks (short job, net10.0, JSON export)
+        run: >
+          dotnet run -c Release -f net10.0
+          --project benchmarks/PostQuantum.Identity.Benchmarks --
+          --filter '*Argon2idBenchmarks*' --job short --exporters json
+
+      - name: Track results and alert on regression (>150% of baseline)
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Argon2id benchmarks
+          tool: benchmarkdotnet
+          output-file-path: BenchmarkDotNet.Artifacts/results/PostQuantum.Identity.Benchmarks.Argon2idBenchmarks-report-full-compressed.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: 150%
+          fail-on-alert: true
+          comment-on-alert: true
+          summary-always: true
 
   pack-verify:
     # Make sure the package itself builds cleanly on every PR — catches metadata

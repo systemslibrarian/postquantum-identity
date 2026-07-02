@@ -1,9 +1,15 @@
 name: Release
 
 # Publishes the NuGet package when a version tag (e.g. v0.1.0-preview.1) is pushed.
-# Requires the NUGET_API_KEY secret on the 'nuget-publish' environment to push to
-# nuget.org. Optional NUGET_SIGNING_CERT (+ NUGET_SIGNING_CERT_PASSWORD) on the
-# same environment enables author code signing of the .nupkg before push.
+#
+# Publishing uses NuGet Trusted Publishing: nuget.org holds a policy trusting
+# THIS repo + THIS workflow, and the publish job exchanges its GitHub OIDC
+# token for a short-lived API key at push time (NuGet/login). No long-lived
+# NUGET_API_KEY secret exists to leak, rotate, or exfiltrate — revoke any old
+# key on nuget.org once this flow is live. The nuget.org profile name that owns
+# the trusted-publishing policy comes from the NUGET_USER repository variable.
+# Optional NUGET_SIGNING_CERT (+ NUGET_SIGNING_CERT_PASSWORD) on the
+# 'nuget-publish' environment enables author code signing of the .nupkg before push.
 
 on:
   push:
@@ -94,14 +100,15 @@ jobs:
   publish:
     needs: pack
     # Bind to a GitHub Environment so an approver can gate the actual push to
-    # nuget.org. Configure the 'nuget-publish' environment in repo settings and
-    # add NUGET_API_KEY there (not as a plain repo secret) to enforce review.
+    # nuget.org. The trusted-publishing policy on nuget.org should also pin this
+    # environment name, so a compromised workflow elsewhere in the repo cannot
+    # mint a publish token.
     environment: nuget-publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write   # OIDC token exchange with nuget.org (Trusted Publishing)
     env:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
       NUGET_SIGNING_CERT: ${{ secrets.NUGET_SIGNING_CERT }}
       NUGET_SIGNING_CERT_PASSWORD: ${{ secrets.NUGET_SIGNING_CERT_PASSWORD }}
     steps:
@@ -111,12 +118,24 @@ jobs:
           name: nuget-packages
           path: artifacts
 
-      - name: Verify an API key is configured
+      # An unset repository variable would reach NuGet/login as an empty string
+      # and die with a generic action error — check it here so the failure names
+      # the actual fix, mirroring the precision of the old API-key precheck.
+      - name: Verify NUGET_USER is configured
         run: |
-          if [ -z "${NUGET_API_KEY}" ]; then
-            echo "::error::NUGET_API_KEY is not set on the 'nuget-publish' environment."
+          if [ -z "${{ vars.NUGET_USER }}" ]; then
+            echo "::error::The NUGET_USER repository variable is not set. Set it to the nuget.org profile that owns this repo's trusted-publishing policy (Settings → Secrets and variables → Actions → Variables)."
             exit 1
           fi
+
+      # Trusted Publishing: exchange this job's GitHub OIDC token for a
+      # short-lived nuget.org API key scoped by the trusted-publishing policy.
+      # `user` is the nuget.org profile that owns the policy.
+      - name: NuGet login (OIDC → short-lived API key)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
 
       # Optional: author code-sign the .nupkg when a code-signing cert is provided.
       # Absent the secret we log it and continue (repo-signing-only stance, see
@@ -149,6 +168,7 @@ jobs:
       - name: Push to nuget.org
         env:
           PKG_VERSION: ${{ needs.pack.outputs.package_version }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: >
           dotnet nuget push "artifacts/PostQuantum.Identity.${PKG_VERSION}.nupkg"
           --api-key "$NUGET_API_KEY"

@@ -13,17 +13,17 @@ hybrid JWTs** for authenticated users via [**PostQuantum.Jwt**](https://github.c
 encryption. It drops into the standard Identity builder chain and is honest about
 exactly what it provides.
 
-> **Production-ready for owned and trusted ecosystems.** The Argon2id
-> password-hashing surface is ready for production adoption today on every
-> supported runtime (net8 / net9 / net10). The hybrid post-quantum token
-> surface is production-quality code, with the caveat that — by design — it
-> uses non-IANA JOSE identifiers and is therefore appropriate for
-> **service-to-service deployments where you own both the issuer and every
-> verifier**, not for public-internet OIDC. The `-preview.N` suffix on the
-> package version reflects honest semver discipline against the
-> [Roadmap to 1.0](#roadmap-to-10) gates (upstream PostQuantum.Jwt 1.0, IETF
-> JOSE PQC drafts settling, third-party audit), not the engineering quality
-> of the code itself.
+> **1.0 — a stability commitment, scoped honestly.** The Argon2id
+> password-hashing surface is production-ready on every supported runtime
+> (net8 / net9 / net10). The hybrid post-quantum token surface is
+> production-ready for **service-to-service deployments where you own both
+> the issuer and every verifier** — by design it uses non-IANA JOSE
+> identifiers, so it is *not* for public-internet OIDC until the IETF JOSE
+> PQC drafts land. The 1.0 version is a **semver promise** (the public API
+> only breaks with a major version, built on upstream PostQuantum.Jwt 1.0
+> stable) — it is **not** an audit claim: the library remains independently
+> unaudited, stated plainly in [What 1.0 means](#what-10-means--and-what-it-does-not)
+> and [`SECURITY.md`](SECURITY.md).
 
 ## Production readiness — at a glance
 
@@ -35,16 +35,22 @@ We split the recommendation so the right half lands on the right call:
 | **Argon2id password hashing** — `Argon2idPasswordHasher`, `MigratingPasswordHasher`, the `IPasswordHasher<TUser>` adapter | net8 / net9 / net10 | **Production-ready. Adopt today.** | Engine is RFC 9106 §5.3 KAT-pinned, interop-verified against the reference `argon2` CLI, with a PHC wire-format pin and roundtrips across OWASP / RFC 9106 / strong / minimum profiles. Fail-closed, constant-time tag compare, vetted dependency (Konscious). One-line drop-in via `AddArgon2idPasswordHasher` or `AddArgon2idPasswordHasherWithMigration`. Transparent rehash-on-login means migration is a one-line change with **no migration job, no forced reset, no flag day**. |
 | **Hybrid post-quantum tokens** — `IPostQuantumTokenService<TUser>`, `PostQuantumTokenOptions`, `AddPostQuantumTokens` | net10 only | **Production-ready for owned / trusted ecosystems.** | `alg = ML-DSA-65` is **non-IANA on purpose** — tokens are intentionally not validated by generic JWT tooling. Pair with PostQuantum.Jwt's `PqJwtBearer` handler. Adopt when **you own both the issuer and every verifier** (service-to-service inside one fleet, internal B2B, mTLS-bracketed APIs). Not appropriate for public-internet OIDC until the IETF JOSE PQC drafts land. |
 
-> **Honesty footnote.** Not yet independently audited; the public API may
-> shift before 1.0 along the
-> [Roadmap to 1.0](#roadmap-to-10). Always read [`KNOWN-GAPS.md`](KNOWN-GAPS.md)
-> before committing the token surface to anything load-bearing — every
-> caveat is enumerated there rather than buried in a private TODO.
+> **Honesty footnote.** Not independently audited — 1.0 speaks to API
+> stability and engineering discipline, not third-party review (that remains
+> on the [post-1.0 roadmap](#what-10-means--and-what-it-does-not)). Always
+> read [`KNOWN-GAPS.md`](KNOWN-GAPS.md) before committing the token surface
+> to anything load-bearing — every caveat is enumerated there rather than
+> buried in a private TODO.
 
-### What's new in 0.6.0-preview.1 — hardening, the full sample lifecycle, trusted publishing
+### What's new in 1.0.0 — stable API on stable upstream
 
-One behavior change on the Argon2id surface (fail-closed direction), a lot
-of adopter-facing substance everywhere else. No new library API.
+1.0 lands on upstream [PostQuantum.Jwt **1.0.0 stable**](https://github.com/systemslibrarian/postquantum-jwt)
+(verified: zero API drift, all 442 tests green, samples E2E) and commits to
+semver: **the public API now only breaks with a major version.** What 1.0
+does *not* claim — an audit, or generic-JWT interoperability — is spelled
+out in [What 1.0 means](#what-10-means--and-what-it-does-not).
+
+Everything below landed in the 0.6 line, same day:
 
 - **Verify-path hardening.** The PHC parser now enforces acceptance bounds —
   a poisoned stored row can no longer demand a ~2 TiB allocation at verify
@@ -84,7 +90,7 @@ workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 - [Production readiness — at a glance](#production-readiness--at-a-glance)
 - [Why](#why)
 - [When to use this library](#when-to-use-this-library)
-- [Roadmap to 1.0](#roadmap-to-10)
+- [What 1.0 means — and what it does not](#what-10-means--and-what-it-does-not)
 - [Install](#install)
 - [Getting started in five minutes](#getting-started-in-five-minutes)
 - [60-second tour](#60-second-tour)
@@ -142,9 +148,9 @@ the parts no NuGet package can solve.
   Production-grade right now. See [`docs/MIGRATION.md`](docs/MIGRATION.md).
 - **You issue JWTs to your own services**, you own both the issuer and every
   verifier, and you want hybrid (classical + PQ) signatures *now* ahead of the
-  standards landing. The preview maturity is acceptable inside a controlled
-  fleet because nothing outside your trust boundary needs to understand
-  `alg = ML-DSA-65`.
+  standards landing. Inside a controlled fleet nothing outside your trust
+  boundary needs to understand `alg = ML-DSA-65`, so the deliberate
+  non-interoperability costs you nothing.
 - **You want a small, focused, vetted dependency surface.** Argon2id comes
   from a widely-used library (Konscious, RFC 9106 KAT-pinned here); ML-DSA /
   ML-KEM come from the .NET BCL. No hand-rolled crypto, no mystery meat.
@@ -167,44 +173,65 @@ the parts no NuGet package can solve.
   to settle, or stay on classical algorithms for that boundary and use this
   library only on the internal hop.
 - **Your organization requires a third-party security audit before adoption.**
-  This library has not yet been independently audited; the path to 1.0 below
-  lists what would unblock that.
+  This library has not been independently audited — 1.0 is an API-stability
+  commitment, not a review; see
+  [What 1.0 means](#what-10-means--and-what-it-does-not).
 
 ### ⛔ Don't use this library when…
 
 - **You're not on ASP.NET Core Identity** at all. The package is built around
   the Identity contracts; without them, nothing about it fits.
 
-## Roadmap to 1.0
+## What 1.0 means — and what it does not
 
-Most of these gates are about external signals (upstream releases, RFC
-publication, audit completion) rather than missing engineering work; the
-engineering bar in this repo is already production-discipline. The
-`-preview.N` suffix stays on the version until **all** of them close. Track
-progress via the GitHub milestones; `KNOWN-GAPS.md` is updated in lockstep.
+A version number is a claim; here is exactly what this one claims.
 
-| Gate | Status | Blocking surface |
-|---|---|---|
-| Public API frozen for a full minor cycle with no breaking changes | open | both |
-| Upstream [`PostQuantum.Jwt`](https://github.com/systemslibrarian/postquantum-jwt) reaches `1.0.0` (stable) | open — currently `1.0.0-preview.1` | tokens |
-| IETF JOSE PQC drafts (alg/kty identifiers) reach RFC or stable WG consensus | open | tokens |
-| Third-party security review of the issuance + verification path | open | both |
-| Fuzz / property-based corpus for the PHC parser and token validator | **PHC parser: done** (deterministic generative corpus in-repo) — token validator tracked upstream in PostQuantum.Jwt | tokens |
-| Benchmarks tracked in CI with a regression budget | **done** — Argon2id benchmarks run on every push to `main`, history on `gh-pages`, 150% step-change alert budget (hosted-runner noise makes finer budgets dishonest; see `KNOWN-GAPS.md`) | Argon2id |
+**1.0 means:**
 
-Until those gates close every release keeps the `-preview.N` suffix and the
-honesty statement in [`SECURITY.md`](SECURITY.md). **Premature 1.0 is a worse
-sin than honest preview** — the version label is conservative on purpose, the
-code underneath is not.
+- **Semver-stable public API.** Breaking changes to any public type or
+  member now require a major version bump. Adopt without tracking a moving
+  target.
+- **Stable upstream.** The token surface builds on
+  [`PostQuantum.Jwt` **1.0.0** (stable)](https://github.com/systemslibrarian/postquantum-jwt)
+  — no preview dependency anywhere in the graph.
+- **The engineering gates are closed.** RFC 9106 §5.3 KAT + reference-CLI
+  interop + wire-format pins, a deterministic generative fuzz corpus for
+  the PHC parser, verification acceptance bounds (poisoned-row DoS closed),
+  benchmarks in CI with a regression budget, zero-skip PQ crypto lanes on
+  Windows and pinned-OpenSSL Linux, deterministic attested builds published
+  via Trusted Publishing.
+- **Production-ready for the stated scopes** — Argon2id everywhere; hybrid
+  tokens where you own both the issuer and every verifier.
+
+**1.0 does NOT mean:**
+
+- **Audited.** No third party has reviewed the design or implementation.
+  If your organization requires an audit before adoption, this release does
+  not change your answer.
+- **Interoperable tokens.** `alg = ML-DSA-65` remains deliberately non-IANA;
+  generic JWT tooling rejects these tokens on purpose until the IETF JOSE
+  PQC drafts settle and upstream adopts the standardized identifiers.
+- **A change in what the crypto provides.** Same primitives, same threat
+  model, same [`KNOWN-GAPS.md`](KNOWN-GAPS.md).
+
+**Post-1.0 roadmap** (tracked via GitHub milestones; `KNOWN-GAPS.md` updated
+in lockstep):
+
+| Item | Unblocks |
+|---|---|
+| Third-party security review of the issuance + verification path | The audit checkbox for regulated adopters |
+| IETF JOSE PQC drafts reach RFC → upstream adopts standardized identifiers | Cross-ecosystem token verification (Java / Node / Rust); picked up here via a normal upstream version bump |
+| Coverage-guided fuzzing (e.g. SharpFuzz) on the PHC parser | Depth beyond the deterministic generative corpus |
+| macOS promoted to a PQ-required lane | Third zero-skip cryptographic-assurance platform, once the BCL macOS ML-DSA path lights up on runners |
 
 ---
 
 ## Install
 
 ```bash
-dotnet add package PostQuantum.Identity --prerelease
-# or pin the exact preview:
-dotnet add package PostQuantum.Identity --version 0.6.0-preview.1
+dotnet add package PostQuantum.Identity
+# or pin the exact version:
+dotnet add package PostQuantum.Identity --version 1.0.0
 ```
 
 Targets `net8.0`, `net9.0`, and `net10.0`. The token features light up on
@@ -223,11 +250,11 @@ step 3.
 ```bash
 dotnet new web -n MyApi
 cd MyApi
-dotnet add package PostQuantum.Identity --prerelease
+dotnet add package PostQuantum.Identity
 dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
 dotnet add package Microsoft.EntityFrameworkCore.InMemory
 # On .NET 10 only, for token validation in the auth pipeline:
-dotnet add package PostQuantum.Jwt.AspNetCore --prerelease
+dotnet add package PostQuantum.Jwt.AspNetCore
 ```
 
 **2. Wire Identity with the Argon2id hasher.** Replace the contents of
@@ -609,9 +636,10 @@ version bump — **no PostQuantum.Identity API change required**. Java / Node /
 Rust libraries implementing the same RFC will then verify tokens issued by
 this library across ecosystems.
 
-This is the single largest gate on the [Roadmap to 1.0](#roadmap-to-10) for
-the token surface. Track upstream progress at the PostQuantum.Jwt repo and
-the IETF JOSE / COSE working group datatracker.
+This is the single largest item on the
+[post-1.0 roadmap](#what-10-means--and-what-it-does-not) for the token
+surface. Track upstream progress at the PostQuantum.Jwt repo and the IETF
+JOSE / COSE working group datatracker.
 
 ---
 
@@ -711,7 +739,7 @@ PostQuantum.Identity is the ASP.NET Core Identity layer of a broader family:
 | Hybrid (classical + PQ) confidentiality | ❌ | — | **X-Wing + AES-256-GCM** | depends |
 | Fail-closed validation (no `alg: none`) | n/a | — | ✅ | depends on yours |
 | Validates in generic JWT libraries | ✅ | n/a | **❌** (non-IANA `alg`) | depends |
-| Independent audit | n/a (Microsoft-shipped) | ❌ (preview) | **❌ (preview, stated)** | depends |
+| Independent audit | n/a (Microsoft-shipped) | ❌ (unaudited) | **❌ (unaudited, stated plainly)** | depends |
 | Supply chain — SBOM + provenance | n/a | embedded SBOM | **embedded SBOM + GitHub attestation** | yours to provide |
 | RFC 9106 Known Answer Tests pinned in CI | n/a | ✅ | **✅ (RFC 9106 §5.3 + CLI interop + emitter pin)** | varies |
 
@@ -764,8 +792,8 @@ needing any special access:
 
 ```bash
 # 1. Pull the package from nuget.org.
-nuget install PostQuantum.Identity -Version 0.6.0-preview.1 -OutputDirectory ./pkg
-PKG=./pkg/PostQuantum.Identity.0.6.0-preview.1/PostQuantum.Identity.0.6.0-preview.1.nupkg
+nuget install PostQuantum.Identity -Version 1.0.0 -OutputDirectory ./pkg
+PKG=./pkg/PostQuantum.Identity.1.0.0/PostQuantum.Identity.1.0.0.nupkg
 
 # 2. Inspect the embedded CycloneDX SBOM (covers all three TFMs).
 unzip -p "$PKG" bom.json | jq '{ format: .bomFormat, spec: .specVersion,
@@ -801,7 +829,7 @@ auditor-facing walkthrough is in
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-identity
 cd postquantum-identity
-git checkout v0.6.0-preview.1   # or your tag of interest
+git checkout v1.0.0          # or your tag of interest
 dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release -o ./local
 # The assemblies inside ./local/*.nupkg are byte-equal to the published ones
 # at the same commit (within toolchain-version equivalence).

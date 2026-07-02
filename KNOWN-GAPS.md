@@ -5,7 +5,7 @@ what is unverified, and where the sharp edges are. Honesty over polish: if
 something is incomplete, it is listed here rather than glossed over. This file
 is part of the contract with anyone evaluating the library.
 
-Last reviewed for: `0.6.0-preview.1` (2026-07-02).
+Last reviewed for: `1.0.0` (2026-07-02).
 
 ## Maturity — split by surface
 
@@ -14,24 +14,22 @@ PostQuantum.Identity ships two surfaces with deliberately different stances:
 - **Argon2id password hashing** (`net8` / `net9` / `net10`): implemented to
   production discipline, RFC 9106 §5.3 KAT-pinned, fail-closed, vetted
   dependency. **Suitable for production adoption today.**
-- **Hybrid post-quantum tokens** (`net10` only): production-quality code for
+- **Hybrid post-quantum tokens** (`net10` only): production-ready for
   **owned / trusted ecosystems** where you own the issuer and every
-  verifier. Not appropriate for public-internet OIDC. Pending: upstream
-  PostQuantum.Jwt 1.0, IETF JOSE PQC drafts settling, third-party audit.
+  verifier, built on upstream PostQuantum.Jwt 1.0.0 (stable). Not
+  appropriate for public-internet OIDC until the IETF JOSE PQC drafts land.
 
-The `-preview.N` label on the package as a whole reflects honest semver
-discipline against the [`Roadmap to 1.0`](README.md#roadmap-to-10) gates —
-most of which are external signals (upstream releases, RFCs, audits) rather
-than missing engineering in this repo. The version label is conservative on
-purpose, not because the code beneath is half-finished.
+**1.0 is a semver commitment, not an audit claim.** The public API only
+breaks with a major version; what the version does and does not promise is
+spelled out in
+[What 1.0 means](README.md#what-10-means--and-what-it-does-not).
 
 ### Cross-cutting
 
 - **No external audit.** No third party has reviewed the design or
-  implementation. Independent review is one of the Roadmap-to-1.0 gates.
-- **Preview API.** Public types and method signatures may change without notice
-  until 1.0. Breaking changes will be called out in the changelog and the
-  pre-release tag.
+  implementation — 1.0 does not change that. Independent review is the top
+  item on the post-1.0 roadmap; organizations that require an audit before
+  adoption should treat this library as not yet qualifying.
 - **Identity drag-in only — no full IdentityServer / OpenIddict story.** This
   library plugs into Identity's `IPasswordHasher<TUser>` and adds a token
   issuer. It is not an OAuth2/OIDC authorization server and does not implement

@@ -89,7 +89,7 @@ Every line of this is wired into [`.github/workflows/release.yml`](../.github/wo
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-identity
 cd postquantum-identity
-git checkout v0.6.0-preview.1   # or the tag you're auditing
+git checkout v1.0.0   # or the tag you're auditing
 dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj \
   -c Release -o ./local
 ```

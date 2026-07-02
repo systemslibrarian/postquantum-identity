@@ -10,7 +10,7 @@ This page is intentionally short. Deep dives live in:
 - [`SECURITY.md`](../SECURITY.md) — full security policy + cryptographic construction + FIPS guidance
 - [`docs/THREAT-MODEL.md`](THREAT-MODEL.md) — STRIDE per surface, assets, mitigations, out-of-scope
 - [`KNOWN-GAPS.md`](../KNOWN-GAPS.md) — what's not done yet, by surface
-- [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10) — gates remaining before the package leaves preview
+- [`README.md` → What 1.0 means](../README.md#what-10-means--and-what-it-does-not) — exactly what the version number does and does not claim, plus the post-1.0 roadmap
 
 ---
 
@@ -18,8 +18,8 @@ This page is intentionally short. Deep dives live in:
 
 | What | Where to verify |
 |---|---|
-| Library ships **two surfaces** at different maturity profiles (Argon2id production-ready; hybrid tokens preview for owned ecosystems) | [`README.md` → Production readiness](../README.md#production-readiness--at-a-glance) |
-| Roadmap to 1.0 lists every gate (upstream stable, IETF drafts, third-party audit, fuzz, CI benchmarks) | [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10) |
+| Library ships **two surfaces** at different scopes (Argon2id everywhere; hybrid tokens for owned ecosystems only) | [`README.md` → Production readiness](../README.md#production-readiness--at-a-glance) |
+| 1.0 = semver-stable API on stable upstream; explicitly NOT an audit claim; post-1.0 roadmap lists what remains | [`README.md` → What 1.0 means](../README.md#what-10-means--and-what-it-does-not) |
 | What is explicitly out of scope (KMS, replay store, lockout, TLS, OAuth2/OIDC server) | [`docs/THREAT-MODEL.md` → Explicitly out of scope](THREAT-MODEL.md#explicitly-out-of-scope) |
 
 ## 2. Cryptographic primitives
@@ -83,7 +83,7 @@ This page is intentionally short. Deep dives live in:
 | Asymmetric DoS mitigation: fixed-window IP-partition rate limiter on `/register`/`/login`/`/refresh` | Samples: [`PostQuantum.Identity.Demo/Program.cs`](../samples/PostQuantum.Identity.Demo/Program.cs), [`PostQuantum.Identity.Mvc.Demo/Controllers/AccountController.cs`](../samples/PostQuantum.Identity.Mvc.Demo/Controllers/AccountController.cs) — smoke-tested 200 → 429 at budget |
 | `/refresh` issues new token BEFORE revoking old `jti` (no token-less window on transient failures) | [`PostQuantum.Identity.Demo/Program.cs` → `/refresh`](../samples/PostQuantum.Identity.Demo/Program.cs) — comment `// Issue the new token BEFORE revoking the old jti` |
 
-## 7. Token surface (preview — owned ecosystems)
+## 7. Token surface (owned ecosystems)
 
 | What | Where to verify |
 |---|---|
@@ -119,11 +119,11 @@ This page is intentionally short. Deep dives live in:
 
 | Gap | Tracked at |
 |---|---|
-| No independent third-party audit | [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10), [`KNOWN-GAPS.md`](../KNOWN-GAPS.md) |
+| No independent third-party audit — 1.0 does not change this | [`README.md` → What 1.0 means](../README.md#what-10-means--and-what-it-does-not), [`KNOWN-GAPS.md`](../KNOWN-GAPS.md) |
 | Generative fuzz corpus covers the PHC parser only; token-validator fuzzing is upstream (PostQuantum.Jwt); coverage-guided fuzzing unexplored | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
 | Benchmark budget in CI catches step-changes (150%), not quiet drift; precision runs need pinned hardware | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
 | macOS is a discovery lane, not PQ-required | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
-| Token surface remains preview (waiting on upstream + IETF) | [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10) |
+| Tokens remain non-interoperable with generic JWT tooling (waiting on IETF JOSE PQC drafts → upstream identifier adoption) | [`README.md` → What 1.0 means](../README.md#what-10-means--and-what-it-does-not) |
 | No bundled KMS integration | [`KNOWN-GAPS.md` → Tokens & protocol](../KNOWN-GAPS.md) |
 
 ---

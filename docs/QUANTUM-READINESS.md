@@ -125,9 +125,9 @@ Key custody (KMS/HSM), TLS, OAuth2/OIDC server flows, cross-service
 revocation stores, and platform FIPS posture stay yours — the
 [threat model](THREAT-MODEL.md) draws those lines precisely, and
 [`KNOWN-GAPS.md`](../KNOWN-GAPS.md) lists every sharp edge. This document is
-sequencing advice, not a compliance certificate; the library itself is
-unaudited preview software and says so plainly in
-[`SECURITY.md`](../SECURITY.md).
+sequencing advice, not a compliance certificate; the library has a
+semver-stable API but remains independently unaudited, and says so plainly
+in [`SECURITY.md`](../SECURITY.md).
 
 ---
 

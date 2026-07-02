@@ -6,10 +6,11 @@ item maps to a code touchpoint, a piece of operational state, or an
 explicit caller responsibility.
 
 > **Honest scoping reminder.** The Argon2id password-hashing surface is
-> production-ready. The hybrid post-quantum **token surface** is preview,
-> appropriate for **owned / trusted ecosystems** only (you control issuer
-> + every verifier). If you're shipping the token surface, treat every
-> "token" row here as load-bearing — anything you defer will bite later.
+> production-ready everywhere. The hybrid post-quantum **token surface** is
+> production-ready for **owned / trusted ecosystems** only (you control
+> issuer + every verifier) — and the library is unaudited regardless of the
+> 1.0 label. If you're shipping the token surface, treat every "token" row
+> here as load-bearing — anything you defer will bite later.
 
 ---
 
@@ -30,7 +31,7 @@ explicit caller responsibility.
 - [ ] **Identical `401 Unauthorized` for "no such user" and "wrong password"** so login doesn't leak account enumeration. Both samples do this; double-check your override.
 - [ ] **2FA / MFA layered on top** for any privileged user class. Argon2id ≠ MFA.
 
-## 3. Token surface (preview — owned ecosystems only)
+## 3. Token surface (owned ecosystems only)
 
 - [ ] **Confirmed you own issuer + every verifier.** No third-party JWT tooling in your trust chain needs to understand `alg = ML-DSA-65`. If you can't promise this, skip the token surface entirely until [IETF JOSE PQC alignment](../README.md#ietf-jose-pqc-alignment--where-the-alg-identifier-comes-from) lands.
 - [ ] **Signing key is provisioned out of band, NOT generated at app startup** in production. The samples generate per-process for demo simplicity; production needs persistent key custody (KMS, HSM, sealed at-rest).
@@ -63,7 +64,7 @@ explicit caller responsibility.
 
 ## 7. Supply chain
 
-- [ ] **Pinned exact `0.x.y-preview.N` version**, not a wildcard. Preview-track means breaking changes can land in any tagged release.
+- [ ] **Pinned an exact version**, not a wildcard. From 1.0.0, semver applies: breaking changes only land with a major version bump — but pin anyway; reproducible deployments beat floating ranges.
 - [ ] **`gh attestation verify` runs in your CI pipeline** for the `.nupkg` you're deploying. See [`README.md` → Supply chain](../README.md#supply-chain--verifiable-in-three-commands).
 - [ ] **CycloneDX SBOM ingested into your SBOM aggregation tool** if you have one.
 - [ ] **Dependabot or equivalent watches** for upstream bumps to `Konscious.Security.Cryptography.Argon2`, `Microsoft.Extensions.Identity.Core`, and (net10) `PostQuantum.Jwt`.

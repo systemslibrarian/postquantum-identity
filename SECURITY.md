@@ -18,22 +18,21 @@ and this document is honest about that:
 Neither half has been independently audited. The
 [`KNOWN-GAPS.md`](KNOWN-GAPS.md) file enumerates everything that is
 unfinished, unverified, or deliberately out of scope, and is updated in
-lockstep with the code. Read it before depending on this library. The
-`-preview.N` suffix on the package version reflects honest semver discipline
-against the Roadmap-to-1.0 gates in the README, not the engineering quality
-of the code itself.
+lockstep with the code. Read it before depending on this library. The 1.0
+version is a **semver commitment** — the public API only breaks with a major
+version — not an audit claim; see
+[What 1.0 means](README.md#what-10-means--and-what-it-does-not).
 
 ## Supported versions
 
 | Version             | Supported           |
 |---------------------|---------------------|
-| `0.6.0-preview.*`   | ✅ (latest preview)  |
+| `1.0.x`             | ✅ (current stable)  |
+| `0.6.0-preview.*`   | ❌ (superseded)      |
 | `0.5.0-preview.*`   | ❌ (superseded)      |
-| `0.3.0-preview.*`   | ❌ (superseded)      |
-| `0.2.0-preview.*`   | ❌ (superseded)      |
-| anything older      | ❌                  |
+| older previews      | ❌                  |
 
-During the `0.6.0-preview.*` series only the most recent preview receives fixes.
+Only the most recent release on the current stable line receives fixes.
 
 ## Reporting a vulnerability
 
@@ -46,8 +45,8 @@ an exploitable flaw.
 
 Please include a description, affected version, and a reproduction if
 possible. We aim to acknowledge within **5 business days**. As an unfunded
-preview project, timelines are best-effort and stated honestly rather than
-promised.
+open-source project, timelines are best-effort and stated honestly rather
+than promised.
 
 ## Threat model
 
@@ -275,24 +274,28 @@ track it.
 
 ## Honesty statement
 
-This is software written in the open and labelled with an honest semver
-preview suffix. It has **not** been independently audited.
+This is software written in the open. **1.0 is an API-stability commitment,
+not an audit claim** — it has **not** been independently audited, and the
+version number does not change that. If your organization requires a
+third-party review before adoption, this library does not yet qualify;
+independent review is the top item on the
+[post-1.0 roadmap](README.md#what-10-means--and-what-it-does-not).
 
 The Argon2id surface is implemented to production discipline and is
 appropriate for production adoption today. The hybrid-token surface is
-production-quality code for **owned / trusted ecosystems** (where you control
+production-ready for **owned / trusted ecosystems** (where you control
 both the issuer and every verifier); it is not appropriate for
 public-internet OIDC or any boundary that needs generic-JWT-tooling
 interoperability — the `alg = ML-DSA-65` identifier is non-IANA on purpose,
-inherited from upstream PostQuantum.Jwt, and will become standards-aligned
-through a normal upstream version bump when the IETF JOSE PQC drafts land.
+inherited from upstream PostQuantum.Jwt (now 1.0.0 stable), and will become
+standards-aligned through a normal upstream version bump when the IETF JOSE
+PQC drafts land.
 
-Until a 1.0 release and an external review, every limitation is enumerated
-in [`KNOWN-GAPS.md`](KNOWN-GAPS.md) and the
-[`Roadmap to 1.0`](README.md#roadmap-to-10) in the README lists exactly what
-unblocks each remaining gate. Every "missing thing" exists in the sample
-code, the docs, or the open issue tracker — not silently in some private
-TODO file.
+Every limitation is enumerated in [`KNOWN-GAPS.md`](KNOWN-GAPS.md), and the
+[post-1.0 roadmap](README.md#what-10-means--and-what-it-does-not) in the
+README lists exactly what unblocks each remaining item. Every "missing
+thing" exists in the sample code, the docs, or the open issue tracker — not
+silently in some private TODO file.
 
 ---
 

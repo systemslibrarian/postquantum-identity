@@ -84,10 +84,11 @@ one process. Everything past the dashed line is yours to manage.
 
 ---
 
-## Surface 2 — Hybrid post-quantum tokens (preview)
+## Surface 2 — Hybrid post-quantum tokens (owned ecosystems)
 
 > Suitable for **owned ecosystems** where you control issuer + every
-> verifier. Not for public-internet OIDC. See [`Roadmap to 1.0`](../README.md#roadmap-to-10).
+> verifier. Not for public-internet OIDC. See
+> [What 1.0 means](../README.md#what-10-means--and-what-it-does-not).
 
 ### STRIDE
 
@@ -151,8 +152,10 @@ in your application or platform.
 | `0.3.0-preview.1` | internal — Paul Clark | 2026-06-02 | Documented; no third-party audit yet |
 | `0.5.0-preview.1` | internal — Paul Clark | 2026-06-03 | Re-reviewed; no scope changes; production-readiness polish only |
 | `0.6.0-preview.1` | internal | 2026-07-02 | Verify-path hardening: PHC acceptance bounds (poisoned-row DoS), canonicality pins (base64 + numeric), deterministic generative corpus; 7-angle adversarial code review of the changeset |
+| `1.0.0` | internal | 2026-07-02 | Upstream PostQuantum.Jwt upgraded to 1.0.0 stable (zero API drift; full suite + samples E2E re-verified); no threat-model scope changes — 1.0 is an API-stability commitment, not a review outcome |
 
-Independent third-party review is one of the [`Roadmap to 1.0`](../README.md#roadmap-to-10) gates.
+Independent third-party review is the top item on the
+[post-1.0 roadmap](../README.md#what-10-means--and-what-it-does-not).
 
 ---
 

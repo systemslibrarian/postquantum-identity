@@ -4,6 +4,30 @@ All notable changes to PostQuantum.Identity are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/), and the project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] — 2026-07-02
+
+**Stable API on stable upstream.** From this release the public API only
+breaks with a major version (semver). 1.0 is explicitly **not** an audit
+claim — the library remains independently unaudited, and the README's
+"What 1.0 means — and what it does not" section states both halves plainly.
+
+### Changed
+
+- **Upstream `PostQuantum.Jwt` / `PostQuantum.Jwt.AspNetCore` upgraded from
+  `1.0.0-preview.1` to `1.0.0` (stable)** — library and all three web
+  samples. Verified: zero API drift (clean compile), the full test suite
+  green with zero skips on the PQ-capable host (442 tests incl. all token
+  KATs and the fail-closed corpus), and the issuer → verifier cross-service
+  flow exercised live. No preview dependency remains anywhere in the graph.
+- **README reframed for 1.0.** The "Roadmap to 1.0" gate table is replaced
+  by "What 1.0 means — and what it does not" (semver commitment, stable
+  upstream, closed engineering gates / no audit, no generic-JWT interop)
+  plus a post-1.0 roadmap (third-party review, IETF JOSE PQC alignment,
+  coverage-guided fuzzing, macOS PQ-required lane). `SECURITY.md`,
+  `KNOWN-GAPS.md`, the threat model, the production checklist, and the
+  security-review checklist re-aligned in lockstep — the unaudited and
+  non-interoperable statements are unchanged in substance everywhere.
+
 ## [0.6.0-preview.1] — 2026-07-02
 
 Verify-path hardening, the full owned-ecosystem sample lifecycle
@@ -381,6 +405,7 @@ Initial preview.
 - Issued tokens use non-IANA JOSE identifiers and are intentionally
   non-interoperable with generic JWT tooling.
 
+[1.0.0]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v1.0.0
 [0.6.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.6.0-preview.1
 [0.5.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.5.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.3.0-preview.1

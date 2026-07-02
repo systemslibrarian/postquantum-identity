@@ -17,9 +17,15 @@ service that issues post-quantum JWTs from passwords.
 | **Public-key discovery** | `GET /.well-known/pq-jwks` | Exposes the ML-DSA-65 verification keys (kid → SPKI) so downstream services can validate independently. |
 
 User data lives in an in-memory EF Core database, so there is nothing to
-install. The ML-DSA-65 keys are generated at startup for the lifetime of the
-process (a demo convenience — real systems provision and rotate keys out of
-band, and verifiers hold only the public halves).
+install. By default the ML-DSA-65 keys are generated at startup for the
+lifetime of the process (a demo convenience). For the production-shaped
+alternative, set `PQ_ISSUER_KEY_DIR` to a directory of `<kid>.private.pem`
+files provisioned by the [KeyTool sample](../PostQuantum.Identity.KeyTool)
+(`PQ_ISSUER_KEY_PASSWORD` decrypts encrypted PKCS#8): the issuer signs with
+the highest-sorting kid, and verifiers hold only the matching
+`*.public.pem` halves — see the
+[Verifier demo](../PostQuantum.Identity.Verifier.Demo) for the full
+two-service walkthrough.
 
 The revocation list is a `ConcurrentDictionary<string, DateTimeOffset>` (in
 memory). A real service would swap that for Redis / a DB table with a TTL
@@ -37,6 +43,12 @@ LD_LIBRARY_PATH=/opt/conda/lib ASPNETCORE_URLS=http://localhost:5199 \
 
 If ML-DSA is unavailable, the app still runs and hashes passwords; the token
 endpoints return `503 Service Unavailable` with a clear `ProblemDetails` body.
+
+Prefer clicking over curl? Open
+[`PostQuantum.Identity.Demo.http`](PostQuantum.Identity.Demo.http) in
+Visual Studio 2022 or VS Code (REST Client) and run the requests top to
+bottom — the token chains between requests automatically, negative cases
+included.
 
 ## End-to-end walkthrough
 
@@ -96,8 +108,11 @@ builder.Services
     .AddEntityFrameworkStores<DemoIdentityContext>()
     .AddPostQuantumTokens<IdentityUser>(o =>
     {
-        o.SigningKey = signingKeyRing[CurrentKeyId]; // current ML-DSA-65 key
-        o.KeyId      = CurrentKeyId;                 // stamped into kid header
+        // currentKeyId is "k2" with per-process keys, or the ordinal-highest
+        // provisioned kid (e.g. "k-2026-07") in PQ_ISSUER_KEY_DIR mode —
+        // zero-pad date-based kids so ordinal order stays chronological.
+        o.SigningKey = signingKeyRing[currentKeyId]; // current ML-DSA-65 key
+        o.KeyId      = currentKeyId;                 // stamped into kid header
         o.Issuer     = Issuer;
         o.Audience   = Audience;
         o.Lifetime   = TimeSpan.FromHours(1);

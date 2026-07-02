@@ -1,0 +1,47 @@
+# Two-service walkthrough: a token issued by the ISSUER (:5199) is spent at
+# this separate VERIFIER (:5299) — different process, no shared code, only
+# public keys in common. Runnable from Visual Studio 2022 or VS Code
+# (REST Client extension).
+#
+# Start both apps first:
+#   Terminal 1:  ASPNETCORE_URLS=http://localhost:5199 dotnet run --project samples/PostQuantum.Identity.Demo
+#   Terminal 2:  dotnet run --project samples/PostQuantum.Identity.Verifier.Demo
+
+@issuer   = http://localhost:5199
+@verifier = http://localhost:5299
+
+### Verifier info — which kids it trusts and where the keys came from.
+GET {{verifier}}/
+
+### 1. Register at the ISSUER.
+POST {{issuer}}/register
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 2. Login at the ISSUER — returns an ML-DSA-65–signed PQ-JWT.
+# @name login
+POST {{issuer}}/login
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 3. Spend the token at the VERIFIER — crosses the service boundary.
+GET {{verifier}}/orders
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Negative: no token -> 401 (the handler never reaches business logic).
+GET {{verifier}}/orders
+
+### Negative: tampered token -> 401 (signature check fails, fail-closed).
+GET {{verifier}}/orders
+Authorization: Bearer {{login.response.body.$.token}}tampered
+
+### Honest edge, demonstrated: revoke at the issuer...
+POST {{issuer}}/logout
+Authorization: Bearer {{login.response.body.$.token}}
+
+### ...and the VERIFIER still accepts it (200) until expiry — revocation does
+### not cross service boundaries without a shared store. See the README.
+GET {{verifier}}/orders
+Authorization: Bearer {{login.response.body.$.token}}

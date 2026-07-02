@@ -95,28 +95,67 @@ var revokedJtis = new ConcurrentDictionary<string, DateTimeOffset>(StringCompare
 builder.Services.AddSingleton(revokedJtis);
 
 // --- Key ring (demonstrates kid-based rotation) ---------------------------
-// Two ML-DSA-65 keys: "k1" (previous) and "k2" (current). New tokens are signed
-// with the current key and stamped with its kid; tokens signed by EITHER key
-// still validate, because the verifier resolves the right public key by kid.
-// In production these are provisioned/rotated out of band and verifiers hold
-// only the public halves.
+// Two provisioning modes, both ending in the same ring shape:
+//
+//   Default: two fresh ML-DSA-65 keys per process ("k1" previous, "k2"
+//   current) — zero-setup demo convenience.
+//
+//   Production-shaped: set PQ_ISSUER_KEY_DIR (or Issuer:KeyDirectory) to a
+//   directory of <kid>.private.pem files provisioned out of band by the
+//   KeyTool sample. The ordinal-highest kid signs — zero-pad date-based names
+//   (k-2026-07, not k-2026-7) so the sort order stays chronological.
+//   PQ_ISSUER_KEY_PASSWORD decrypts encrypted PKCS#8 files. Hand only the
+//   matching *.public.pem files to verifiers (see the Verifier.Demo sample).
+//
+// New tokens are signed with the current key and stamped with its kid; tokens
+// signed by EITHER key still validate, because the verifier resolves the right
+// public key by kid.
 var signingKeyRing = new Dictionary<string, MLDsa>(StringComparer.Ordinal);
 var verifyingKeyRing = new Dictionary<string, MLDsa>(StringComparer.Ordinal);
-const string CurrentKeyId = "k2";
+string currentKeyId = "k2";
+
+string? keyDirectory = builder.Configuration["Issuer:KeyDirectory"]
+    ?? Environment.GetEnvironmentVariable("PQ_ISSUER_KEY_DIR");
+
+// Fail closed: explicitly provisioned keys on a host that cannot sign with
+// them is a deployment error, not a case for the demo-convenience fallback.
+// Without this check the app would boot cleanly, silently ignore the
+// operator's keys, and only surface the problem as 503s at first /login.
+if (keyDirectory is not null && !MLDsa.IsSupported)
+{
+    throw new InvalidOperationException(
+        "PQ_ISSUER_KEY_DIR / Issuer:KeyDirectory is set, but ML-DSA is unavailable on this host "
+        + "(needs Windows CNG or OpenSSL 3.5+ on Linux). Refusing to start while ignoring provisioned keys.");
+}
 
 if (MLDsa.IsSupported)
 {
-    foreach (string kid in new[] { "k1", CurrentKeyId })
+    if (keyDirectory is not null)
     {
-        MLDsa key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
-        signingKeyRing[kid] = key;
+        LoadSigningKeysFromDirectory(keyDirectory, signingKeyRing);
+
+        // Fail closed: an explicitly configured key directory with no usable
+        // keys is a deployment error, not a reason to fall back to random keys.
+        currentKeyId = signingKeyRing.Keys.Max(StringComparer.Ordinal)
+            ?? throw new InvalidOperationException($"No *.private.pem keys found in {keyDirectory}.");
+    }
+    else
+    {
+        foreach (string kid in new[] { "k1", currentKeyId })
+        {
+            signingKeyRing[kid] = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+        }
+    }
+
+    foreach ((string kid, MLDsa key) in signingKeyRing)
+    {
         verifyingKeyRing[kid] = MLDsa.ImportSubjectPublicKeyInfo(key.ExportSubjectPublicKeyInfo());
     }
 
     identity.AddPostQuantumTokens<IdentityUser>(o =>
     {
-        o.SigningKey = signingKeyRing[CurrentKeyId];
-        o.KeyId = CurrentKeyId;            // stamped into the token's `kid` header
+        o.SigningKey = signingKeyRing[currentKeyId];
+        o.KeyId = currentKeyId;            // stamped into the token's `kid` header
         o.Issuer = Issuer;
         o.Audience = Audience;
         o.Lifetime = TokenLifetime;
@@ -177,7 +216,7 @@ app.MapGet("/", () => Results.Ok(new
 {
     service = "PostQuantum.Identity demo",
     pqcAvailable = MLDsa.IsSupported,
-    currentKeyId = CurrentKeyId,
+    currentKeyId = currentKeyId,
     endpoints = Endpoints,
 }));
 
@@ -242,7 +281,7 @@ app.MapPost("/login", async (
         token,
         token_type = "PQ-JWT",
         alg = "ML-DSA-65",
-        kid = CurrentKeyId,
+        kid = currentKeyId,
         expires_in = (int)TokenLifetime.TotalSeconds,
     });
 }).RequireRateLimiting("auth");
@@ -286,7 +325,7 @@ app.MapPost("/refresh", [Authorize] async (
         token = newToken,
         token_type = "PQ-JWT",
         alg = "ML-DSA-65",
-        kid = CurrentKeyId,
+        kid = currentKeyId,
         expires_in = (int)TokenLifetime.TotalSeconds,
         rotated_from = oldJti,
     });
@@ -350,10 +389,39 @@ app.MapGet("/.well-known/pq-jwks", () =>
         spki_b64 = Convert.ToBase64String(kvp.Value.ExportSubjectPublicKeyInfo()),
     });
 
-    return Results.Ok(new { keys, current_kid = CurrentKeyId });
+    return Results.Ok(new { keys, current_kid = currentKeyId });
 });
 
 app.Run();
+
+// Loads KeyTool-provisioned <kid>.private.pem files into the signing ring, kid
+// taken from the file name. The label sniff routes to the right BCL PEM reader
+// (native BCL first — no hand-rolled base64/DER handling); anything unexpected
+// throws so the host fails at startup instead of signing with a partial ring.
+static void LoadSigningKeysFromDirectory(string keyDirectory, Dictionary<string, MLDsa> ring)
+{
+    string? keyPassword = Environment.GetEnvironmentVariable("PQ_ISSUER_KEY_PASSWORD");
+    foreach (string path in Directory.GetFiles(keyDirectory, "*.private.pem"))
+    {
+        string kid = Path.GetFileName(path)[..^".private.pem".Length];
+        string pem = File.ReadAllText(path);
+        if (!PemEncoding.TryFind(pem, out PemFields fields))
+        {
+            throw new InvalidOperationException($"{path} contains no PEM block.");
+        }
+
+        ring[kid] = pem[fields.Label] switch
+        {
+            "PRIVATE KEY" => MLDsa.ImportFromPem(pem),
+            "ENCRYPTED PRIVATE KEY" => MLDsa.ImportFromEncryptedPem(
+                pem,
+                keyPassword ?? throw new InvalidOperationException(
+                    $"{path} is encrypted — set PQ_ISSUER_KEY_PASSWORD.")),
+            var label => throw new InvalidOperationException(
+                $"{path}: unsupported PEM label \"{label}\"."),
+        };
+    }
+}
 
 /// <summary>Login/registration request body.</summary>
 internal sealed record Credentials(string Username, string Password);

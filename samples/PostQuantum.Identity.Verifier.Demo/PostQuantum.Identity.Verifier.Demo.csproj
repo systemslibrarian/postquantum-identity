@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Token validation needs the .NET 10 BCL post-quantum primitives. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The BCL ML-DSA APIs are still flagged experimental in .NET 10; the
+         demo opts in knowingly. -->
+    <NoWarn>$(NoWarn);SYSLIB5006</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The whole point of this sample: a verifier needs ONLY the PqJwtBearer
+         handler and the issuer's public keys. No PostQuantum.Identity, no
+         ASP.NET Core Identity, no user store, no private keys, no passwords. -->
+    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0-preview.1" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,41 @@
+# Walkthrough for the MVC demo (controller-based twin of the minimal-API demo).
+# Runnable from Visual Studio 2022 or VS Code (REST Client extension).
+#
+# Start the app first:
+#   ASPNETCORE_URLS=http://localhost:5199 dotnet run --project samples/PostQuantum.Identity.Mvc.Demo
+
+@base = http://localhost:5199
+
+### 1. Register — Argon2id-hashed password.
+POST {{base}}/account/register
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 2. Login — ML-DSA-65–signed PQ-JWT.
+# @name login
+POST {{base}}/account/login
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 3. Protected controller endpoint.
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 4. Refresh — new token first, then the old jti is revoked.
+# @name refresh
+POST {{base}}/account/refresh
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 4a. Old token -> expect 401.
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 5. Logout with the new token.
+POST {{base}}/account/logout
+Authorization: Bearer {{refresh.response.body.$.token}}
+
+### 5a. Token after logout -> expect 401.
+GET {{base}}/me
+Authorization: Bearer {{refresh.response.body.$.token}}

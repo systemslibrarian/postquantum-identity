@@ -1,0 +1,66 @@
+# End-to-end walkthrough for the issuer demo, runnable from Visual Studio 2022
+# or VS Code (REST Client extension) — no curl/jq required.
+#
+# Start the app first:
+#   ASPNETCORE_URLS=http://localhost:5199 dotnet run --project samples/PostQuantum.Identity.Demo
+#
+# Run the requests top to bottom. Named requests (`# @name`) let later
+# requests reference earlier responses, so the token flows automatically.
+# Note the demos rate-limit auth endpoints to 10 requests / 30 s per IP —
+# rapid re-runs will (correctly) hit 429.
+
+@base = http://localhost:5199
+
+### Service info — confirms PQC availability and the current signing kid.
+GET {{base}}/
+
+### 1. Register — password is hashed with Argon2id (PHC string persisted).
+POST {{base}}/register
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 2. Login — Argon2id verify (fail-closed), then an ML-DSA-65–signed PQ-JWT.
+# @name login
+POST {{base}}/login
+Content-Type: application/json
+
+{ "username": "ada", "password": "Lovelace#1843" }
+
+### 3. Protected endpoint — PqJwtBearer validates signature/issuer/audience/expiry.
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 4. Refresh — new token issued FIRST, then the old jti is revoked.
+# @name refresh
+POST {{base}}/refresh
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 4a. The OLD token is now revoked -> expect 401.
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 4b. The NEW token works -> expect 200.
+GET {{base}}/me
+Authorization: Bearer {{refresh.response.body.$.token}}
+
+### 5. Logout — puts the current jti on the revocation list (idempotent).
+POST {{base}}/logout
+Authorization: Bearer {{refresh.response.body.$.token}}
+
+### 5a. Token after logout -> expect 401.
+GET {{base}}/me
+Authorization: Bearer {{refresh.response.body.$.token}}
+
+### 6. Public-key discovery — kid -> SPKI, for downstream verifiers.
+GET {{base}}/.well-known/pq-jwks
+
+### Negative: wrong password -> 401, same body as unknown user (no enumeration).
+POST {{base}}/login
+Content-Type: application/json
+
+{ "username": "ada", "password": "wrong-password" }
+
+### Negative: tampered token -> 401 (ML-DSA-65 signature fails, fail-closed).
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.$.token}}tampered

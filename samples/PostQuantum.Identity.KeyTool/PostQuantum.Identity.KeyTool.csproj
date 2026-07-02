@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- ML-DSA lives in the .NET 10 BCL. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The BCL ML-DSA APIs are still flagged experimental in .NET 10; the
+         tool opts in knowingly, same as the demos. -->
+    <NoWarn>$(NoWarn);SYSLIB5006</NoWarn>
+  </PropertyGroup>
+
+  <!-- Deliberately no package or project references: key provisioning is pure
+       BCL (System.Security.Cryptography). If you copy this tool into your own
+       ops repo, it carries nothing with it. -->
+
+</Project>

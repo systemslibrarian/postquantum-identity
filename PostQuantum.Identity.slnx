@@ -4,7 +4,9 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/PostQuantum.Identity.Demo/PostQuantum.Identity.Demo.csproj" />
+    <Project Path="samples/PostQuantum.Identity.KeyTool/PostQuantum.Identity.KeyTool.csproj" />
     <Project Path="samples/PostQuantum.Identity.Mvc.Demo/PostQuantum.Identity.Mvc.Demo.csproj" />
+    <Project Path="samples/PostQuantum.Identity.Verifier.Demo/PostQuantum.Identity.Verifier.Demo.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/PostQuantum.Identity/PostQuantum.Identity.csproj" />

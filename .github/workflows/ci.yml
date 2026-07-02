@@ -128,9 +128,13 @@ jobs:
           activate-environment: pq
           channels: conda-forge
 
-      - name: Install OpenSSL 3.5+ from conda-forge
+      - name: Install OpenSSL 3.5+ (3.x series) from conda-forge
         run: |
-          conda install -y -n pq -c conda-forge "openssl>=3.5"
+          # Pin to the 3.x line: conda-forge resolves an unbounded ">=3.5" to
+          # OpenSSL 4.x now, and the .NET 10 BCL PQC path binds libcrypto.so.3 —
+          # against 4.0.1 MLDsa.IsSupported is false and all PQ tests skip
+          # (which this lane's zero-skip gate correctly turned into a failure).
+          conda install -y -n pq -c conda-forge "openssl>=3.5,<4"
           "$CONDA/envs/pq/bin/openssl" version
           echo "PQ_OPENSSL_LIB=$CONDA/envs/pq/lib" >> "$GITHUB_ENV"
 

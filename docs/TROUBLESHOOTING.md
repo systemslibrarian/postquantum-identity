@@ -8,11 +8,16 @@ quotes the real error text where there is one, so this page is greppable.
 ### Token endpoints return 503 / `MLDsa.IsSupported` is `false`
 
 **Cause:** the .NET 10 BCL post-quantum primitives need OS crypto support —
-Windows CNG (Windows 11 / Server 2022+) or OpenSSL 3.5+ on Linux. On a
-distro whose system OpenSSL is 3.0.x–3.4.x, ML-DSA is unavailable and the
-library fails closed (503 with `ProblemDetails`) instead of downgrading.
+Windows CNG (Windows 11 / Server 2022+) or OpenSSL 3.5+ **in the 3.x
+series** on Linux. On a distro whose system OpenSSL is 3.0.x–3.4.x, ML-DSA
+is unavailable and the library fails closed (503 with `ProblemDetails`)
+instead of downgrading. **OpenSSL 4.x does not help**: the BCL binds
+`libcrypto.so.3`, so against 4.0.1 `MLDsa.IsSupported` is still `false`
+(observed in this repo's own CI when conda-forge started resolving
+`openssl>=3.5` to 4.x).
 
-**Fix:** point the loader at an OpenSSL 3.5+ build, e.g. from conda-forge:
+**Fix:** point the loader at an OpenSSL 3.5+ (3.x) build, e.g. from
+conda-forge (`conda install "openssl>=3.5,<4"`):
 
 ```bash
 LD_LIBRARY_PATH=/opt/conda/lib dotnet run   # or dotnet test

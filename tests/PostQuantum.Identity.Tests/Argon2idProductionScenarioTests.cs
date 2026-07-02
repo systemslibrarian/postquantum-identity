@@ -138,6 +138,19 @@ public class Argon2idProductionScenarioTests
     [InlineData("$argon2id$v=19$t=1,m=8192,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     [InlineData("$argon2id$v=19$m=-1,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     [InlineData("$argon2id$v=19$m=99999999999,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    // Poisoned work factors: in-int-range but absurd values must die at parse
+    // time. Verify spends the declared factors for real, so accepting
+    // m=2147483647 would mean a ~2 TiB allocation attempt on every
+    // verification of that row — a DoS one poisoned database row could repeat
+    // forever. Values below Argon2's own floors would make the underlying
+    // implementation throw mid-verify instead of failing closed.
+    [InlineData("$argon2id$v=19$m=2147483647,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=8192,t=2147483647,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=8192,t=1,p=2147483647$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=0,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=8192,t=0,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=8192,t=1,p=0$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("$argon2id$v=19$m=16,t=1,p=4$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")] // violates m ≥ 8·p
     // Version attacks (v=10 is the older Argon2 1.0 spec, not supported here).
     [InlineData("$argon2id$v=10$m=8192,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     [InlineData("$argon2id$$m=8192,t=1,p=1$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]

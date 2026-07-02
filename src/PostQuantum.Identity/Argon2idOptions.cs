@@ -138,41 +138,47 @@ public sealed record Argon2idOptions
     /// for any value outside the safe operating range.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// A work factor is below its documented minimum.
+    /// A work factor is outside its documented range.
     /// </exception>
     public void Validate()
     {
         // Lower bounds reflect the OWASP / RFC 9106 minimums; below these the
-        // configuration would be insecure rather than merely slow.
-        if (MemorySizeKib < 8192)
+        // configuration would be insecure rather than merely slow. Upper bounds
+        // mirror the verifier's PHC acceptance bounds (see Internal.PhcString) so
+        // this library can never emit a hash its own Verify would refuse.
+        if (MemorySizeKib < 8192 || MemorySizeKib > Internal.PhcString.MaxMemorySizeKib)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(MemorySizeKib), MemorySizeKib,
-                "Memory cost must be at least 8192 KiB (8 MiB). The library recommends 65536 KiB (64 MiB).");
+                $"Memory cost must be between 8192 KiB (8 MiB) and {Internal.PhcString.MaxMemorySizeKib} KiB (4 GiB). The library recommends 65536 KiB (64 MiB).");
         }
 
-        if (Iterations < 1)
+        if (Iterations < 1 || Iterations > Internal.PhcString.MaxIterations)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(Iterations), Iterations, "Iterations (time cost) must be at least 1.");
+                nameof(Iterations), Iterations,
+                $"Iterations (time cost) must be between 1 and {Internal.PhcString.MaxIterations}.");
         }
 
-        if (DegreeOfParallelism < 1)
+        if (DegreeOfParallelism < 1 || DegreeOfParallelism > Internal.PhcString.MaxDegreeOfParallelism)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(DegreeOfParallelism), DegreeOfParallelism, "Degree of parallelism must be at least 1.");
+                nameof(DegreeOfParallelism), DegreeOfParallelism,
+                $"Degree of parallelism must be between 1 and {Internal.PhcString.MaxDegreeOfParallelism}.");
         }
 
-        if (SaltSizeBytes < 16)
+        if (SaltSizeBytes < 16 || SaltSizeBytes > Internal.PhcString.MaxSaltSizeBytes)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(SaltSizeBytes), SaltSizeBytes, "Salt must be at least 16 bytes (128 bits).");
+                nameof(SaltSizeBytes), SaltSizeBytes,
+                $"Salt must be between 16 bytes (128 bits) and {Internal.PhcString.MaxSaltSizeBytes} bytes.");
         }
 
-        if (HashSizeBytes < 16)
+        if (HashSizeBytes < 16 || HashSizeBytes > Internal.PhcString.MaxHashSizeBytes)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(HashSizeBytes), HashSizeBytes, "Hash length must be at least 16 bytes (128 bits).");
+                nameof(HashSizeBytes), HashSizeBytes,
+                $"Hash length must be between 16 bytes (128 bits) and {Internal.PhcString.MaxHashSizeBytes} bytes.");
         }
     }
 }

@@ -20,10 +20,10 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.Identity</PackageId>
-    <Version>0.6.0-preview.1</Version>
+    <Version>1.0.0</Version>
     <Title>PostQuantum.Identity — post-quantum ASP.NET Core Identity</Title>
     <Authors>Paul Clark</Authors>
-    <Description>Post-quantum integration for ASP.NET Core Identity, with two surfaces at deliberately different maturity profiles. (1) PRODUCTION-READY Argon2id password hashing — PHC-formatted, secure-by-default work factors, transparent rehash-on-login, one-line PBKDF2→Argon2id migration via AddArgon2idPasswordHasherWithMigration, fail-closed verification, RFC 9106 §5.3 Known Answer Tests + reference-CLI PHC interop + emitter wire-format pin. Runs on net8.0 / net9.0 / net10.0. (2) PREVIEW hybrid post-quantum JWT issuance for owned/trusted ecosystems — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption, kid-based key rotation, JSON-source-gen claim path. Uses non-IANA algorithm identifiers; intentionally not interoperable with generic JWT tooling. Requires .NET 10 (and OpenSSL 3.5+ on Linux). Supply chain: every .nupkg ships with an embedded CycloneDX SBOM, GitHub Sigstore-signed build-provenance attestation (verifiable with gh attestation verify), deterministic SourceLink builds, .snupkg symbols, CodeQL on every PR, Dependabot. Not yet independently audited. See https://github.com/systemslibrarian/postquantum-identity for the production-readiness stance, the Roadmap to 1.0, the migration guide, and runnable minimal-API + MVC samples.</Description>
+    <Description>Post-quantum integration for ASP.NET Core Identity, with two surfaces at deliberately different scopes. (1) Argon2id password hashing for every deployment — PHC-formatted, secure-by-default work factors, transparent rehash-on-login, one-line PBKDF2→Argon2id migration via AddArgon2idPasswordHasherWithMigration, fail-closed verification with bounded parse cost, RFC 9106 §5.3 Known Answer Tests + reference-CLI PHC interop + emitter wire-format pin + deterministic generative fuzz corpus. Runs on net8.0 / net9.0 / net10.0. (2) Hybrid post-quantum JWT issuance for owned/trusted ecosystems (you control both the issuer and every verifier) — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption, kid-based key rotation, JSON-source-gen claim path, built on PostQuantum.Jwt 1.0.0 (stable). Uses non-IANA algorithm identifiers; intentionally not interoperable with generic JWT tooling until the IETF JOSE PQC drafts land. Requires .NET 10 (and OpenSSL 3.5+, 3.x series, on Linux). Supply chain: embedded CycloneDX SBOM, GitHub Sigstore-signed build-provenance attestation (verifiable with gh attestation verify), NuGet Trusted Publishing, deterministic SourceLink builds, .snupkg symbols, CodeQL, Dependabot. 1.0 is a semver API-stability commitment — NOT an audit claim; the library is not independently audited, stated plainly in SECURITY.md. See https://github.com/systemslibrarian/postquantum-identity for the full stance, migration guide, quantum-readiness playbook, and runnable issuer/verifier/key-tool samples.</Description>
     <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-identity</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/postquantum-identity</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -31,7 +31,20 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>aspnetcore;identity;aspnet-identity;password-hashing;argon2;argon2id;phc;owasp;jwt;jwt-token;post-quantum;pqc;quantum-resistant;ml-dsa;ml-kem;x-wing;hybrid-cryptography;authentication;cryptography;security;fips-204;sbom;cyclonedx;net8;net9;net10</PackageTags>
     <PackageReleaseNotes>
-0.6.0-preview.1 — Verify-path hardening, full owned-ecosystem sample lifecycle, trusted publishing.
+1.0.0 — Stable API on stable upstream.
+
+What 1.0 means: the public API only breaks with a major version (semver),
+and the token surface now builds on PostQuantum.Jwt 1.0.0 STABLE (verified:
+zero API drift, 442 tests green with zero skips on the PQ-capable lanes,
+issuer/verifier samples exercised end-to-end).
+
+What 1.0 does NOT mean: an audit (no third party has reviewed this library —
+if your organization requires one, 1.0 does not change your answer), or
+generic-JWT interoperability (alg = ML-DSA-65 stays deliberately non-IANA
+until the IETF JOSE PQC drafts land; upstream adopts the standardized
+identifiers then, picked up here via a normal version bump).
+
+Everything below shipped the same day in the 0.6 line:
 
 Security (one behavior change, in the fail-closed direction):
   - PHC verification acceptance bounds: a poisoned stored row can no longer
@@ -68,7 +81,7 @@ in what order) and docs/TROUBLESHOOTING.md (symptom → cause → fix).
 Infrastructure: NuGet Trusted Publishing (no long-lived API key),
 Argon2id benchmarks in CI with a regression budget, macOS discovery lane.
 
-Still preview — NOT independently audited. See KNOWN-GAPS.md.
+NOT independently audited — every remaining gap is in KNOWN-GAPS.md.
     </PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © Paul Clark</Copyright>
@@ -98,7 +111,7 @@ Still preview — NOT independently audited. See KNOWN-GAPS.md.
 
   <!-- Hybrid-token integration: PostQuantum.Jwt + BCL PQC ship for .NET 10 only. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="PostQuantum.Jwt" Version="1.0.0-preview.1" />
+    <PackageReference Include="PostQuantum.Jwt" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

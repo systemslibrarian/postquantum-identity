@@ -15,7 +15,7 @@
     <!-- The whole point of this sample: a verifier needs ONLY the PqJwtBearer
          handler and the issuer's public keys. No PostQuantum.Identity, no
          ASP.NET Core Identity, no user store, no private keys, no passwords. -->
-    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0-preview.1" />
+    <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

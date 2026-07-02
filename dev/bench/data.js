@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783026575024,
+  "lastUpdate": 1783028634212,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -78,6 +78,84 @@ window.BENCHMARK_DATA = {
             "value": 101452344.86666667,
             "unit": "ns",
             "range": "± 333737.985821356"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "paul@systemslibrarian.dev",
+            "name": "Paul Clark",
+            "username": "systemslibrarian"
+          },
+          "committer": {
+            "email": "paul@systemslibrarian.dev",
+            "name": "Paul Clark",
+            "username": "systemslibrarian"
+          },
+          "distinct": true,
+          "id": "0702bb53376afcfb401c7dd0def68c58fbeb6a03",
+          "message": "release: 1.0.0 - stable API on stable upstream, scoped honestly\n\nThe 1.0 version is a semver commitment (public API breaks only with a major\nversion) built on PostQuantum.Jwt 1.0.0 stable - explicitly NOT an audit\nclaim. The README Roadmap-to-1.0 gate table becomes What 1.0 means - and\nwhat it does not (semver + stable upstream + closed engineering gates on\none side; no audit, no generic-JWT interop on the other) with a post-1.0\nroadmap. SECURITY.md, KNOWN-GAPS.md, threat model, production checklist,\nand security-review checklist re-aligned in lockstep; the unaudited and\nnon-interoperable statements are unchanged in substance everywhere.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+          "timestamp": "2026-07-02T17:41:49-04:00",
+          "tree_id": "5a1a3ce3cac58dd83e07d47a73ccfb9d6171a9e4",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/0702bb53376afcfb401c7dd0def68c58fbeb6a03"
+        },
+        "date": 1783028633801,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 518939787.6666667,
+            "unit": "ns",
+            "range": "± 1160804.401965436"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 518017958.3333333,
+            "unit": "ns",
+            "range": "± 684946.6797396227"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 513265188,
+            "unit": "ns",
+            "range": "± 704083.5262687233"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1389468279.3333333,
+            "unit": "ns",
+            "range": "± 1203630.5728380005"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1384874648.3333333,
+            "unit": "ns",
+            "range": "± 1141593.8214922738"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1381659371,
+            "unit": "ns",
+            "range": "± 2163565.03547201"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 100595756.26666665,
+            "unit": "ns",
+            "range": "± 348255.84399831103"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 101857202.93333334,
+            "unit": "ns",
+            "range": "± 684445.2947566011"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 102208074.2,
+            "unit": "ns",
+            "range": "± 119895.31394795729"
           }
         ]
       }

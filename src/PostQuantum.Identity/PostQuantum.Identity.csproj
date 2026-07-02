@@ -20,7 +20,7 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.Identity</PackageId>
-    <Version>0.5.0-preview.1</Version>
+    <Version>0.6.0-preview.1</Version>
     <Title>PostQuantum.Identity — post-quantum ASP.NET Core Identity</Title>
     <Authors>Paul Clark</Authors>
     <Description>Post-quantum integration for ASP.NET Core Identity, with two surfaces at deliberately different maturity profiles. (1) PRODUCTION-READY Argon2id password hashing — PHC-formatted, secure-by-default work factors, transparent rehash-on-login, one-line PBKDF2→Argon2id migration via AddArgon2idPasswordHasherWithMigration, fail-closed verification, RFC 9106 §5.3 Known Answer Tests + reference-CLI PHC interop + emitter wire-format pin. Runs on net8.0 / net9.0 / net10.0. (2) PREVIEW hybrid post-quantum JWT issuance for owned/trusted ecosystems — ML-DSA-65 signatures (FIPS 204) with optional X-Wing (X25519 + ML-KEM-768) encryption, kid-based key rotation, JSON-source-gen claim path. Uses non-IANA algorithm identifiers; intentionally not interoperable with generic JWT tooling. Requires .NET 10 (and OpenSSL 3.5+ on Linux). Supply chain: every .nupkg ships with an embedded CycloneDX SBOM, GitHub Sigstore-signed build-provenance attestation (verifiable with gh attestation verify), deterministic SourceLink builds, .snupkg symbols, CodeQL on every PR, Dependabot. Not yet independently audited. See https://github.com/systemslibrarian/postquantum-identity for the production-readiness stance, the Roadmap to 1.0, the migration guide, and runnable minimal-API + MVC samples.</Description>
@@ -31,42 +31,42 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>aspnetcore;identity;aspnet-identity;password-hashing;argon2;argon2id;phc;owasp;jwt;jwt-token;post-quantum;pqc;quantum-resistant;ml-dsa;ml-kem;x-wing;hybrid-cryptography;authentication;cryptography;security;fips-204;sbom;cyclonedx;net8;net9;net10</PackageTags>
     <PackageReleaseNotes>
-0.5.0-preview.1 — Final production-readiness polish. No public API changes; no behavior changes.
+0.6.0-preview.1 — Verify-path hardening, full owned-ecosystem sample lifecycle, trusted publishing.
 
-Positioning:
-  - README leads with an explicit "Production-ready for owned and trusted
-    ecosystems" banner above the split-surface maturity table.
-  - "Roadmap to 1.0" gates re-framed as external-signal blockers (upstream
-    PostQuantum.Jwt 1.0, IETF JOSE PQC drafts, third-party audit) rather
-    than missing engineering — the version label is conservative on
-    purpose, the code beneath is production-discipline.
-  - SECURITY.md and KNOWN-GAPS.md honesty statements re-aligned to match.
+Security (one behavior change, in the fail-closed direction):
+  - PHC verification acceptance bounds: a poisoned stored row can no longer
+    demand an absurd Argon2id computation (m=2147483647 was a ~2 TiB
+    allocation attempt per verify). Accepted: m in [8 KiB, 4 GiB],
+    t in [1, 512], p in [1, 64] (m >= 8p), salt in [8, 64] B,
+    tag in [12, 512] B. Out-of-range fails closed before any allocation.
+  - Canonicality pins: exactly one accepted spelling per hash — canonical
+    unpadded base64 for salt/tag (whitespace + trailing-bit aliases
+    rejected), no leading-zero numeric aliases, and oversized fields
+    rejected on length before any decode work.
+  - Argon2idOptions.Validate() gains matching upper bounds so the emitter
+    can never produce a hash its own verifier refuses.
+  - BREAKING if you ever ran an out-of-range config (e.g.
+    DegreeOfParallelism above 64): stored hashes from such configs no
+    longer verify and there is no automatic recovery — read the CHANGELOG
+    and docs/TROUBLESHOOTING.md before upgrading.
+  - New deterministic generative (fuzz-style) corpus for the PHC parser;
+    acceptance bounds pinned at both edges of every axis.
 
-Supply chain:
-  - README's verification section renamed "How to verify this package
-    (supply chain — three commands)" so it is easy to find for auditors
-    landing on the page cold.
-  - New docs/SUPPLY-CHAIN.md — auditor-facing companion: chain-of-custody
-    diagram, per-arrow verification table, full release.yml hygiene
-    checklist, reproducibility recipe, SHA-256 cross-check guidance, and
-    a "what this does NOT prove" honesty section.
+Samples — the full provision → issue → verify → rotate lifecycle:
+  - NEW Verifier.Demo: a separate resource service validating tokens across
+    a real process boundary with only public keys (no Identity, no
+    passwords, no private keys). The "you own both the issuer and every
+    verifier" topology, runnable.
+  - NEW KeyTool: generate/inspect ML-DSA-65 keys as (optionally encrypted)
+    PKCS#8 + SPKI PEM. Pure BCL, zero dependencies.
+  - Issuer demo can now load KeyTool-provisioned keys (PQ_ISSUER_KEY_DIR).
+  - .http walkthrough files for all three web samples.
 
-Reference samples:
-  - PostQuantum.Identity.Mvc.Demo: token Lifetime lifted into a single
-    TokenConstants.Lifetime source-of-truth; AccountController login and
-    refresh responses now surface expires_in for parity with the
-    minimal-API demo.
+Docs: NEW docs/QUANTUM-READINESS.md (what to do about the quantum threat,
+in what order) and docs/TROUBLESHOOTING.md (symptom → cause → fix).
 
-Repo hygiene:
-  - .gitignore now explicitly excludes nuget.key / nuget.key.* / *.nuget.key
-    so a stray local API-key file at the repo root can never be committed.
-
-Earlier highlights — 0.3.0 added hardened Argon2id and token KATs, the
-production-shaped samples (refresh/logout/JWKS/revocation), opinionated
-work-factor presets, startup options validation, the preflight logger, and
-the supply-chain verification flow. 0.2.0 added the PBKDF2→Argon2id
-migrating hasher, kid rotation, AOT-clean claim path, embedded CycloneDX
-SBOM, CI/release workflows, and benchmarks.
+Infrastructure: NuGet Trusted Publishing (no long-lived API key),
+Argon2id benchmarks in CI with a regression budget, macOS discovery lane.
 
 Still preview — NOT independently audited. See KNOWN-GAPS.md.
     </PackageReleaseNotes>

@@ -4,6 +4,135 @@ All notable changes to PostQuantum.Identity are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/), and the project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0-preview.1] — 2026-07-02
+
+Verify-path hardening, the full owned-ecosystem sample lifecycle
+(provision → issue → verify → rotate), developer playbooks, and trusted
+publishing. One behavioral change on the Argon2id surface, all in the
+fail-closed direction; no new library API.
+
+### Security
+
+- **PHC acceptance bounds — poisoned-stored-row DoS closed.** `Verify` spends
+  whatever work factors the stored PHC string declares, so a poisoned row
+  (compromised database, hostile import) declaring `m=2147483647` previously
+  triggered a ~2 TiB allocation attempt on every verification of that row,
+  and sub-floor values (`t=0`, `p=0`) made the underlying Argon2id
+  implementation throw out of `Verify` instead of failing closed. The parser
+  now enforces documented acceptance bounds — `m` ∈ [8 KiB, 4 GiB],
+  `t` ∈ [1, 512], `p` ∈ [1, 64], `m ≥ 8·p`, salt ∈ [8, 64] bytes,
+  tag ∈ [12, 512] bytes — chosen to clear every profile a legitimate encoder
+  emits (reference CLI, libsodium through its "sensitive" profile, all
+  presets) while failing closed on anything outside, before any allocation.
+- **Canonicality pins — one accepted spelling per hash.** Salt and tag
+  segments must be the single canonical unpadded-base64 encoding of their
+  bytes (`Convert`'s silent whitespace-skipping and non-zero-trailing-bit
+  tolerance previously let distinct stored strings alias to the same decoded
+  value), and numeric fields reject leading-zero aliases (`m=08192` parsed
+  identically to `m=8192` under `NumberStyles.None`). Oversized base64
+  fields are additionally rejected on length *before* any decode work, so a
+  multi-megabyte poisoned field can't extract pad/decode/re-encode passes
+  before the byte-length bounds turn it away.
+- **`Argon2idOptions.Validate()` gains matching upper bounds** (4 GiB /
+  t≤512 / p≤64 / 64-byte salt / 512-byte tag) so a configuration can never
+  emit a hash the library's own verifier refuses.
+- **⚠️ Breaking — read before upgrading if you ever ran an out-of-range
+  config.** Earlier versions had no upper bounds, so configurations like
+  `DegreeOfParallelism = Environment.ProcessorCount` on a >64-core host,
+  `Iterations > 512`, or `SaltSizeBytes > 64` were legal and produced stored
+  hashes that the new parser **permanently rejects** — verification returns
+  `Failed` exactly as for a wrong password, and since rehash-on-login
+  requires a successful verify, there is **no automatic recovery**: affected
+  users need a password reset. The startup validation error you'd hit when
+  upgrading such a config is the tripwire — do NOT "fix" it by just lowering
+  the value; audit whether stored hashes were produced above the ceilings
+  first. Same applies to imported foreign hashes below the new floors
+  (salt < 8 bytes or tag < 12 bytes — spec-legal but sub-credible). No
+  published profile (OWASP, RFC 9106, libsodium, this library's presets) is
+  affected. Details in `KNOWN-GAPS.md` and `docs/TROUBLESHOOTING.md`.
+
+### Added
+
+- **Deterministic generative (fuzz-style) corpus for the PHC parser**
+  (`PhcStringPropertyTests`) — seeded-PRNG format/parse roundtrips across the
+  full acceptance bounds, structural mutations of valid stored hashes, and
+  hostile random garbage; pins that parsing never throws, anything accepted
+  is inside the bounds, and no mutation of a stored hash ever verifies.
+  Fixed seeds make every failure reproducible. Closes the in-repo half of
+  the Roadmap-to-1.0 fuzz gate; the token validator's generative coverage
+  belongs to upstream PostQuantum.Jwt and is tracked there.
+- **Acceptance-bounds edge tests** — both edges of every axis asserted
+  exactly, plus poisoned-work-factor entries in the adversarial corpus and
+  non-canonical-base64 rejection pins.
+- **`samples/PostQuantum.Identity.Verifier.Demo`** — the missing half of the
+  "you own both the issuer and every verifier" deployment model: a separate
+  resource service that validates tokens issued by the main demo across a
+  real process boundary. Holds only public keys (via the issuer's `pq-jwks`
+  or provisioned `*.public.pem` files); references only
+  `PostQuantum.Jwt.AspNetCore` — no Identity, no passwords, no private keys.
+  Fail-closed startup: no loadable keys → the host refuses to start. Its
+  README states plainly that revocation does not cross service boundaries.
+- **`samples/PostQuantum.Identity.KeyTool`** — makes "provision an ML-DSA-65
+  key out of band" concrete: `generate` (PKCS#8 private — AES-256-CBC +
+  PBKDF2-SHA256 when a password is given — plus SPKI public PEM, with
+  refuse-to-overwrite kid discipline) and `inspect` (algorithm + SPKI
+  SHA-256 fingerprint). Pure .NET 10 BCL, zero dependencies.
+- **Issuer demo: PEM-provisioned key ring.** `PQ_ISSUER_KEY_DIR` (+
+  `PQ_ISSUER_KEY_PASSWORD`) loads KeyTool-provisioned `<kid>.private.pem`
+  files and signs with the highest-sorting kid, completing the
+  provision → issue → verify → rotate lifecycle across the three samples.
+  Per-process random keys remain the zero-setup default.
+- **`docs/QUANTUM-READINESS.md`** — a sequencing playbook for Identity
+  apps: the threat scoped honestly (HNDL vs. signature forgery, what Grover
+  does and doesn't break), an asset inventory table, a four-step adoption
+  order (passwords now → owned-ecosystem tokens now → third-party
+  boundaries deliberately later → TLS via platform), a "what done looks
+  like" checklist, and an explicit "Argon2id is not PQC" clarification.
+- **`docs/TROUBLESHOOTING.md`** — greppable symptom → cause → fix for
+  everything adopters hit: ML-DSA unavailability / 503s, the five reasons a
+  valid-looking token gets 401, generic-JWT-tooling rejection (by design),
+  startup validation failures, container OOM sizing, foreign-hash
+  verification (bounds / canonical encoding / variant), rehash-on-login not
+  firing, appsettings binding precedence, demo rate-limit 429s, and the
+  verifier's fail-closed startup.
+- **`.http` walkthrough files for all three web samples** — runnable from
+  Visual Studio 2022 / VS Code REST Client with named-request token
+  chaining, including the negative cases (tampered token, revoked jti,
+  wrong password) and the verifier demo's revocation-doesn't-cross-services
+  edge, demonstrated live.
+- **README: configuration-binding recipe** — tuning `Argon2idOptions` from
+  `appsettings.{Environment}.json` via `Configure<Argon2idOptions>`, with
+  the precedence rule stated (inline registration options would win) and
+  the preflight logger as the "what did it actually resolve" answer.
+
+### Infrastructure
+
+- **NuGet Trusted Publishing.** The release workflow no longer uses a
+  long-lived `NUGET_API_KEY` secret: the `publish` job exchanges its GitHub
+  OIDC token for a short-lived nuget.org API key via `NuGet/login`, under a
+  trusted-publishing policy pinned to this repo + workflow (+ the
+  `nuget-publish` environment). Requires the `NUGET_USER` repository
+  variable. A stolen copy of repo secrets can no longer publish this
+  package; revoke any legacy key on nuget.org.
+- **Benchmarks in CI with a regression budget** (closes a Roadmap-to-1.0
+  gate). Argon2id benchmarks run on every push to `main` (short job,
+  net10.0, JSON export), tracked over time on `gh-pages` via
+  `github-action-benchmark`, failing on a >150% step-change. The budget's
+  honesty limits (hosted-runner noise; no quiet-drift detection) are stated
+  in `KNOWN-GAPS.md`.
+- **macOS CI discovery job** (`macos-discovery`, pushes to `main` only —
+  the signal it gathers changes per runner-image release, not per commit,
+  so it deliberately stays off the per-PR critical path). Builds and runs
+  the net10 suite; reports — without failing — whether the .NET 10 BCL
+  macOS ML-DSA path let the PQ token tests run. README compatibility table
+  updated from "untested" to "discovery lane".
+- **Skip-count parsing extracted to `scripts/count-skipped-tests.sh`.** The
+  fragile `dotnet test` console-log parsing behind the zero-skip PQ gates
+  previously existed as three diverging inline copies (the Linux variant's
+  `tail -1` would have under-counted a multi-TFM lane). One script, used by
+  all lanes, that **errors when no summary lines are found** — a console-
+  format change now breaks visibly instead of silently reporting 0 skips.
+
 ## [0.5.0-preview.1] — 2026-06-03
 
 A final production-readiness polish release on top of 0.3. **No public API
@@ -252,6 +381,7 @@ Initial preview.
 - Issued tokens use non-IANA JOSE identifiers and are intentionally
   non-interoperable with generic JWT tooling.
 
+[0.6.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.6.0-preview.1
 [0.5.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.5.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.3.0-preview.1
 [0.2.0-preview.1]: https://github.com/systemslibrarian/postquantum-identity/releases/tag/v0.2.0-preview.1

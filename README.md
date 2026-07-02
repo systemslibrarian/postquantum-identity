@@ -41,42 +41,41 @@ We split the recommendation so the right half lands on the right call:
 > before committing the token surface to anything load-bearing — every
 > caveat is enumerated there rather than buried in a private TODO.
 
-### What's new in 0.5.0-preview.1 — the "production-readiness polish" release
+### What's new in 0.6.0-preview.1 — hardening, the full sample lifecycle, trusted publishing
 
-A pure polish-and-positioning release on top of 0.3. **No public API changes,
-no behavior changes** — the deltas are all in the framing, the docs, and the
-auditor-facing surface.
+One behavior change on the Argon2id surface (fail-closed direction), a lot
+of adopter-facing substance everywhere else. No new library API.
 
-- **Lead positioning sharpened.** New "Production-ready for owned and
-  trusted ecosystems" banner above the split-surface table; SECURITY and
-  KNOWN-GAPS honesty statements reworded to match. The `-preview.N` suffix
-  reflects honest semver discipline against the Roadmap-to-1.0 gates, not
-  the engineering quality.
-- **Roadmap-to-1.0 gates re-framed.** Each gate is now annotated with the
-  surface it blocks (Argon2id / tokens / both) and is honestly labelled as
-  an external-signal blocker rather than missing engineering.
-- **New `docs/SUPPLY-CHAIN.md`** — auditor-facing companion to the README's
-  three-command verify: chain-of-custody diagram, per-arrow verification
-  table, full `release.yml` hygiene checklist, reproducibility recipe,
-  SHA-256 cross-check guidance, and a "what this does NOT prove" honesty
-  section. README's verification section renamed
-  ["How to verify this package"](#how-to-verify-this-package-supply-chain--three-commands)
-  so auditors can find it cold.
-- **MVC demo polished for parity.** Token `Lifetime` lifted into a single
-  `TokenConstants.Lifetime` source-of-truth; login and refresh responses
-  surface `expires_in` for parity with the minimal-API demo.
-- **`.gitignore` hardened against secret leaks.** `nuget.key` /
-  `nuget.key.*` / `*.nuget.key` are now explicitly excluded so a stray
-  local API-key file at the repo root can never be committed.
+- **Verify-path hardening.** The PHC parser now enforces acceptance bounds —
+  a poisoned stored row can no longer demand a ~2 TiB allocation at verify
+  time — plus strict canonicality: exactly one accepted spelling per hash
+  (canonical unpadded base64, no leading-zero numeric aliases, oversized
+  fields rejected before any decode work). Backed by a deterministic
+  generative fuzz corpus, closing the in-repo half of that roadmap gate.
+  **Upgrading from an exotic out-of-range config? Read the
+  [`CHANGELOG`](CHANGELOG.md) breaking note first.**
+- **The full owned-ecosystem lifecycle, runnable.** New
+  [Verifier demo](samples/PostQuantum.Identity.Verifier.Demo) (a separate
+  resource service holding only public keys — the "you own both ends"
+  topology live), new [KeyTool](samples/PostQuantum.Identity.KeyTool)
+  (provision ML-DSA-65 keys as encrypted PKCS#8/SPKI PEM, pure BCL), issuer
+  demo loads provisioned keys, and `.http` walkthroughs for every sample.
+- **Developer playbooks.** [`docs/QUANTUM-READINESS.md`](docs/QUANTUM-READINESS.md)
+  — what to do about the quantum threat, in what order, stated honestly —
+  and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md), a greppable
+  symptom → cause → fix for everything adopters hit.
+- **Trusted publishing + CI depth.** Releases publish to nuget.org via
+  GitHub OIDC (no long-lived API key to leak), Argon2id benchmarks run in
+  CI with a step-change regression budget, and a macOS discovery lane
+  tracks the BCL's ML-DSA availability there.
 
-Earlier highlights — **0.3:** hardened Argon2id and token KATs, the
-production-shaped samples (refresh / logout / JWKS / revocation),
-opinionated work-factor presets, startup options validation, the preflight
-logger, DoS guidance, the supply-chain verification flow, FIPS guidance,
-threat model, and security-review checklist. **0.2:** `MigratingPasswordHasher`
-(PBKDF2→Argon2id), `kid` key rotation, AOT-clean claim path, embedded
-CycloneDX SBOM, CI/release workflows, benchmarks. See the
-[`CHANGELOG`](CHANGELOG.md).
+Earlier highlights — **0.5:** production-readiness positioning,
+`docs/SUPPLY-CHAIN.md`, MVC demo parity. **0.3:** hardened Argon2id and
+token KATs, production-shaped samples (refresh / logout / JWKS /
+revocation), opinionated presets, startup validation, preflight logger,
+threat model. **0.2:** `MigratingPasswordHasher` (PBKDF2→Argon2id), `kid`
+rotation, AOT-clean claim path, embedded CycloneDX SBOM, CI/release
+workflows, benchmarks. See the [`CHANGELOG`](CHANGELOG.md).
 
 ---
 
@@ -130,7 +129,11 @@ hybrid token.
 ## When to use this library
 
 Four honest checks before you adopt this package. Read them in order — the
-first match is the right one.
+first match is the right one. For the bigger question — *what should my
+Identity app do about the quantum threat, in what order?* — read the
+[quantum-readiness playbook](docs/QUANTUM-READINESS.md): it sequences
+passwords, internal tokens, external boundaries, and TLS honestly, including
+the parts no NuGet package can solve.
 
 ### ✅ Use PostQuantum.Identity *today* when…
 
@@ -186,8 +189,8 @@ progress via the GitHub milestones; `KNOWN-GAPS.md` is updated in lockstep.
 | Upstream [`PostQuantum.Jwt`](https://github.com/systemslibrarian/postquantum-jwt) reaches `1.0.0` (stable) | open — currently `1.0.0-preview.1` | tokens |
 | IETF JOSE PQC drafts (alg/kty identifiers) reach RFC or stable WG consensus | open | tokens |
 | Third-party security review of the issuance + verification path | open | both |
-| Fuzz / property-based corpus for the PHC parser and token validator | open | both |
-| Benchmarks tracked in CI with a regression budget | open | Argon2id |
+| Fuzz / property-based corpus for the PHC parser and token validator | **PHC parser: done** (deterministic generative corpus in-repo) — token validator tracked upstream in PostQuantum.Jwt | tokens |
+| Benchmarks tracked in CI with a regression budget | **done** — Argon2id benchmarks run on every push to `main`, history on `gh-pages`, 150% step-change alert budget (hosted-runner noise makes finer budgets dishonest; see `KNOWN-GAPS.md`) | Argon2id |
 
 Until those gates close every release keeps the `-preview.N` suffix and the
 honesty statement in [`SECURITY.md`](SECURITY.md). **Premature 1.0 is a worse
@@ -201,7 +204,7 @@ code underneath is not.
 ```bash
 dotnet add package PostQuantum.Identity --prerelease
 # or pin the exact preview:
-dotnet add package PostQuantum.Identity --version 0.5.0-preview.1
+dotnet add package PostQuantum.Identity --version 0.6.0-preview.1
 ```
 
 Targets `net8.0`, `net9.0`, and `net10.0`. The token features light up on
@@ -378,6 +381,25 @@ Tune the work factors through the standard options pattern:
     o.Iterations    = 4;
 })
 ```
+
+Or bind them from configuration — the registration honors a prior
+`Configure<Argon2idOptions>` call, so per-environment tuning lives in
+`appsettings.{Environment}.json` with no code change:
+
+```csharp
+builder.Services.Configure<Argon2idOptions>(
+    builder.Configuration.GetSection("Argon2id"));
+// ...then register with no inline options, so the bound values win:
+.AddArgon2idPasswordHasher<IdentityUser>()
+```
+
+```json
+{ "Argon2id": { "MemorySizeKib": 131072, "Iterations": 4 } }
+```
+
+Either way, a value outside the safe range fails at host startup (see
+below), and `AddPostQuantumPreflightLogging()` prints the *resolved*
+work factors at boot so there's never a question of what got picked up.
 
 Defaults exceed the OWASP minimum and follow the RFC 9106 second recommended
 profile. The lower bounds are enforced — a configuration weaker than 8 MiB
@@ -595,13 +617,31 @@ the IETF JOSE / COSE working group datatracker.
 
 ## Try the demo
 
-Two runnable samples wire all of this into a real ASP.NET Core app with an
-in-memory store — nothing to install:
+Four runnable samples cover the full owned-ecosystem lifecycle — provision →
+issue → verify → rotate — with nothing to install:
 
 - [`samples/PostQuantum.Identity.Demo`](samples/PostQuantum.Identity.Demo) —
-  minimal APIs, `PqJwtBearer` `[Authorize]`, and `kid`-based key rotation.
+  the **issuer**: minimal APIs, `PqJwtBearer` `[Authorize]`, `kid`-based key
+  rotation, refresh/logout/revocation. Signs with per-process keys by
+  default, or with KeyTool-provisioned PEM keys via `PQ_ISSUER_KEY_DIR`.
+- [`samples/PostQuantum.Identity.Verifier.Demo`](samples/PostQuantum.Identity.Verifier.Demo) —
+  the **verifier**: a separate resource service holding only public keys —
+  no Identity, no passwords, no private keys. This is the "you own both the
+  issuer and every verifier" topology, live: it validates tokens issued by
+  the demo above across a real process boundary, pulling keys from
+  `pq-jwks` or from provisioned `*.public.pem` files.
+- [`samples/PostQuantum.Identity.KeyTool`](samples/PostQuantum.Identity.KeyTool) —
+  the **provisioning step**: generate/inspect ML-DSA-65 keys as (optionally
+  encrypted) PKCS#8 + SPKI PEM. Pure BCL, zero dependencies. Turns
+  "provision a key out of band" from a hand-wave into a command.
 - [`samples/PostQuantum.Identity.Mvc.Demo`](samples/PostQuantum.Identity.Mvc.Demo) —
-  the same wiring with controller-based MVC.
+  the issuer wiring with controller-based MVC.
+
+Each web sample ships a `.http` walkthrough file next to its `Program.cs` —
+open it in Visual Studio 2022 or VS Code (REST Client) and run the requests
+top to bottom; the token flows between requests automatically, no curl/jq
+needed. Stuck on anything? [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+maps every common symptom to its fix.
 
 ```bash
 # One command. (LD_LIBRARY_PATH is only needed where the system OpenSSL
@@ -690,6 +730,11 @@ registration each.
 
 - **Fail-closed, always.** Malformed stored hashes never verify; token validation
   raises on any tamper, wrong audience, or expiry. No silent downgrade.
+- **Bounded verification cost.** Stored hashes declare their own work factors,
+  so the parser enforces acceptance bounds (up to 4 GiB / t=512 / p=64) — a
+  poisoned database row can't demand a ~2 TiB allocation on every sign-in.
+  Salt and tag segments must be canonical unpadded base64 (whitespace and
+  trailing-bit aliases are rejected).
 - **Memory zeroing.** UTF-8 password bytes and computed candidates are wiped with
   `CryptographicOperations.ZeroMemory` after use.
 - **Constant-time comparison.** Hash comparison uses
@@ -719,8 +764,8 @@ needing any special access:
 
 ```bash
 # 1. Pull the package from nuget.org.
-nuget install PostQuantum.Identity -Version 0.5.0-preview.1 -OutputDirectory ./pkg
-PKG=./pkg/PostQuantum.Identity.0.5.0-preview.1/PostQuantum.Identity.0.5.0-preview.1.nupkg
+nuget install PostQuantum.Identity -Version 0.6.0-preview.1 -OutputDirectory ./pkg
+PKG=./pkg/PostQuantum.Identity.0.6.0-preview.1/PostQuantum.Identity.0.6.0-preview.1.nupkg
 
 # 2. Inspect the embedded CycloneDX SBOM (covers all three TFMs).
 unzip -p "$PKG" bom.json | jq '{ format: .bomFormat, spec: .specVersion,
@@ -756,7 +801,7 @@ auditor-facing walkthrough is in
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-identity
 cd postquantum-identity
-git checkout v0.5.0-preview.1   # or your tag of interest
+git checkout v0.6.0-preview.1   # or your tag of interest
 dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release -o ./local
 # The assemblies inside ./local/*.nupkg are byte-equal to the published ones
 # at the same commit (within toolchain-version equivalence).
@@ -786,7 +831,7 @@ dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj -c Release -o .
 | **Windows 11 / Server 2022+ (x64, ARM64)** | ✅ | ✅ | ML-DSA via Windows CNG. CI runs Windows lane on every PR. |
 | **Linux — glibc, OpenSSL ≥ 3.5** | ✅ | ✅ | Modern distros (Ubuntu 25.04+, Fedora 40+, RHEL 10 once it ships). CI runs a "PQ-required" lane pinning OpenSSL 3.5+ via conda-forge — any skipped PQ test there fails the build. |
 | **Linux — glibc, OpenSSL 3.0.x – 3.4.x** | ✅ | ⚠️ skipped | Argon2id runs; `MLDsa.IsSupported` returns `false`, so token operations 503 with a clear `ProblemDetails`. Pin a 3.5+ provider via `LD_LIBRARY_PATH` (the docker / dev-container pattern) to light up tokens. |
-| **macOS 13+ (Intel and Apple Silicon)** | ✅ | ⚠️ untested | Argon2id is pure managed code — no concern. Token surface depends on the .NET 10 BCL's macOS ML-DSA path; we haven't run it in CI yet. Treat as best-effort until that lane lands. |
+| **macOS 13+ (Intel and Apple Silicon)** | ✅ | ⚠️ discovery lane | Argon2id is pure managed code — no concern. A `macos-discovery` CI job (pushes to `main`) builds and runs the net10 suite: the PQ token tests run when the BCL's macOS ML-DSA path is available on the runner image and skip with a reason otherwise — the job's log notice records the current status. Not a PQ-*required* lane. |
 | **Alpine / musl** | ✅ | ⚠️ untested | Argon2id works; token surface depends on the musl OpenSSL build supplying an ML-DSA-capable provider — set up case-by-case. |
 
 ### Container constraints

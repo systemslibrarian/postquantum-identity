@@ -51,7 +51,12 @@ This page is intentionally short. Deep dives live in:
 | What | Where to verify |
 |---|---|
 | Malformed PHC → `VerifyResult.Failed`, never a partial match | [`PhcStringTests.cs::TryParse_fails_closed_on_malformed_input`](../tests/PostQuantum.Identity.Tests/PhcStringTests.cs) |
-| Adversarial PHC corpus (variant casing, segment counts, embedded whitespace, base64 attacks, path-traversal noise, junk) | [`Argon2idProductionScenarioTests.cs::TryParse_fails_closed_on_adversarial_input`](../tests/PostQuantum.Identity.Tests/Argon2idProductionScenarioTests.cs) |
+| Adversarial PHC corpus (variant casing, segment counts, embedded whitespace, base64 attacks, path-traversal noise, poisoned work factors, junk) | [`Argon2idProductionScenarioTests.cs::TryParse_fails_closed_on_adversarial_input`](../tests/PostQuantum.Identity.Tests/Argon2idProductionScenarioTests.cs) |
+| PHC acceptance bounds pinned at both edges of every axis (`m`/`t`/`p`/salt/tag, `m ≥ 8·p`) | [`PhcStringTests.cs::TryParse_enforces_acceptance_bounds_at_the_exact_edges`](../tests/PostQuantum.Identity.Tests/PhcStringTests.cs) |
+| Canonical-base64 pin — whitespace and trailing-bit aliases rejected | [`PhcStringTests.cs::TryParse_rejects_non_canonical_base64`](../tests/PostQuantum.Identity.Tests/PhcStringTests.cs) |
+| Numeric canonicality — leading-zero aliases (`m=08192`) rejected | [`PhcStringTests.cs::TryParse_rejects_leading_zero_aliases_in_numeric_fields`](../tests/PostQuantum.Identity.Tests/PhcStringTests.cs) |
+| Oversized base64 fields rejected on length before decode work | [`PhcStringTests.cs::TryParse_rejects_oversized_base64_fields_before_decoding`](../tests/PostQuantum.Identity.Tests/PhcStringTests.cs) |
+| Deterministic generative (fuzz-style) corpus — roundtrips, mutations, garbage; never throws, stays bounded, no mutation verifies | [`PhcStringPropertyTests.cs`](../tests/PostQuantum.Identity.Tests/PhcStringPropertyTests.cs) |
 | Token: expired / wrong-key / per-segment-tampered / malformed → `PqJwtException` | [`PostQuantumTokenSecurityTests.cs`](../tests/PostQuantum.Identity.Tests/Tokens/PostQuantumTokenSecurityTests.cs) |
 | Reserved JWT claims (`iss/sub/aud/exp/nbf/iat/jti`) cannot be overridden by user-store claims | [`PostQuantumTokenSecurityTests.cs::Custom_user_claims_flow_through_but_cannot_override_reserved`](../tests/PostQuantum.Identity.Tests/Tokens/PostQuantumTokenSecurityTests.cs) |
 | Insecure `Argon2idOptions` (< 8 MiB, t<1, etc.) reject at construction | [`Argon2idOptions.cs::Validate`](../src/PostQuantum.Identity/Argon2idOptions.cs) |
@@ -74,6 +79,7 @@ This page is intentionally short. Deep dives live in:
 | `Verify` thread-safe under 64-way Parallel.For load | [`Argon2idProductionScenarioTests.cs::Verify_is_safe_under_concurrent_load`](../tests/PostQuantum.Identity.Tests/Argon2idProductionScenarioTests.cs) |
 | Concurrent `HashPassword` produces distinct salts (CSPRNG contention-free) | [`Argon2idProductionScenarioTests.cs::HashPassword_produces_distinct_salts_under_concurrent_load`](../tests/PostQuantum.Identity.Tests/Argon2idProductionScenarioTests.cs) |
 | Wrong-password Verify under concurrency is always `Failed` (no transient match) | [`Argon2idProductionScenarioTests.cs::Verify_wrong_password_under_concurrency_is_always_Failed`](../tests/PostQuantum.Identity.Tests/Argon2idProductionScenarioTests.cs) |
+| Poisoned-stored-row DoS bounded: parser rejects out-of-bounds work factors before any allocation | [`SECURITY.md` → Bounded verification cost](../SECURITY.md#threat-model), [`PhcString.cs`](../src/PostQuantum.Identity/Internal/PhcString.cs) acceptance-bounds block |
 | Asymmetric DoS mitigation: fixed-window IP-partition rate limiter on `/register`/`/login`/`/refresh` | Samples: [`PostQuantum.Identity.Demo/Program.cs`](../samples/PostQuantum.Identity.Demo/Program.cs), [`PostQuantum.Identity.Mvc.Demo/Controllers/AccountController.cs`](../samples/PostQuantum.Identity.Mvc.Demo/Controllers/AccountController.cs) — smoke-tested 200 → 429 at budget |
 | `/refresh` issues new token BEFORE revoking old `jti` (no token-less window on transient failures) | [`PostQuantum.Identity.Demo/Program.cs` → `/refresh`](../samples/PostQuantum.Identity.Demo/Program.cs) — comment `// Issue the new token BEFORE revoking the old jti` |
 
@@ -84,6 +90,8 @@ This page is intentionally short. Deep dives live in:
 | `alg = ML-DSA-65` is intentionally non-IANA (rationale, no rename surprise) | [`README.md` → IETF JOSE PQC alignment](../README.md#ietf-jose-pqc-alignment--where-the-alg-identifier-comes-from) |
 | Path to cross-ecosystem verification (upstream version bump, no PostQuantum.Identity API change) | Same section as above |
 | `kid` rotation contract demonstrated end-to-end with a two-key ring | [`PostQuantumTokenServiceTests.cs::Token_from_rotated_key_validates_via_kid_resolver`](../tests/PostQuantum.Identity.Tests/Tokens/PostQuantumTokenServiceTests.cs), and live in [`PostQuantum.Identity.Demo/Program.cs`](../samples/PostQuantum.Identity.Demo/Program.cs) |
+| Owned-ecosystem topology (separate issuer + verifier services, verifier holds public keys only) demonstrated live | [`samples/PostQuantum.Identity.Verifier.Demo`](../samples/PostQuantum.Identity.Verifier.Demo) — no Identity / private-key / password dependency; fail-closed startup |
+| Out-of-band key provisioning (PKCS#8 + SPKI PEM, encrypted option, refuse-to-overwrite kid discipline) | [`samples/PostQuantum.Identity.KeyTool`](../samples/PostQuantum.Identity.KeyTool) — pure BCL |
 | Optional hybrid encryption (X-Wing + AES-256-GCM); holds unless both classical and PQ halves are broken | [`PostQuantumTokenSecurityTests.cs::Sign_then_encrypt_roundtrips_and_marks_encrypted`](../tests/PostQuantum.Identity.Tests/Tokens/PostQuantumTokenSecurityTests.cs) |
 
 ## 8. Supply-chain integrity
@@ -94,6 +102,7 @@ This page is intentionally short. Deep dives live in:
 | Embedded CycloneDX SBOM in every `.nupkg` | Inspect: `unzip -p PostQuantum.Identity.<v>.nupkg bom.json` |
 | GitHub build-provenance attestation (Sigstore-signed) | Verify: `gh attestation verify <nupkg> --owner systemslibrarian` |
 | Deterministic builds, SourceLink, `.snupkg` symbols | [`Directory.Build.props`](../Directory.Build.props), [`PostQuantum.Identity.csproj`](../src/PostQuantum.Identity/PostQuantum.Identity.csproj) |
+| Trusted Publishing — no long-lived NuGet API key; publish job exchanges GitHub OIDC for a short-lived key under a repo+workflow-pinned policy | [`release.yml`](../.github/workflows/release.yml) `publish` job, [`docs/SUPPLY-CHAIN.md` → Hygiene checklist](SUPPLY-CHAIN.md#hygiene-checklist--whats-in-releaseyml) |
 | CodeQL on every PR/push, Dependabot enabled | [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml), [`.github/dependabot.yml`](../.github/dependabot.yml) |
 | Version-sync check (csproj / README / CHANGELOG must agree) | [`scripts/check-version-sync.sh`](../scripts/check-version-sync.sh) |
 
@@ -111,8 +120,9 @@ This page is intentionally short. Deep dives live in:
 | Gap | Tracked at |
 |---|---|
 | No independent third-party audit | [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10), [`KNOWN-GAPS.md`](../KNOWN-GAPS.md) |
-| No property-based / generative fuzz tests (corpus is hand-rolled) | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
-| Benchmarks not run in CI (no regression budget) | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
+| Generative fuzz corpus covers the PHC parser only; token-validator fuzzing is upstream (PostQuantum.Jwt); coverage-guided fuzzing unexplored | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
+| Benchmark budget in CI catches step-changes (150%), not quiet drift; precision runs need pinned hardware | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
+| macOS is a discovery lane, not PQ-required | [`KNOWN-GAPS.md` → Testing & environment](../KNOWN-GAPS.md) |
 | Token surface remains preview (waiting on upstream + IETF) | [`README.md` → Roadmap to 1.0](../README.md#roadmap-to-10) |
 | No bundled KMS integration | [`KNOWN-GAPS.md` → Tokens & protocol](../KNOWN-GAPS.md) |
 
@@ -128,7 +138,7 @@ dotnet test -c Release
 LD_LIBRARY_PATH=/opt/conda/lib dotnet test -c Release
 ```
 
-Current count: **99 (net8) / 99 (net9) / 121 (net10)** — all green.
+Current count: **135 (net8) / 135 (net9) / 157 (net10)** — all green.
 
 A passing run is the floor, not the ceiling. Pair it with the threat model
 and the gap list above for the full picture.

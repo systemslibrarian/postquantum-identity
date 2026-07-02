@@ -5,7 +5,7 @@ what is unverified, and where the sharp edges are. Honesty over polish: if
 something is incomplete, it is listed here rather than glossed over. This file
 is part of the contract with anyone evaluating the library.
 
-Last reviewed for: `0.5.0-preview.1` (2026-06-03).
+Last reviewed for: `0.6.0-preview.1` (2026-07-02).
 
 ## Maturity — split by surface
 
@@ -63,6 +63,25 @@ purpose, not because the code beneath is half-finished.
 - **No throttling or lockout.** Memory-hard hashing raises the cost of offline
   cracking; it is not a substitute for online rate-limiting / lockout, which is
   Identity's job, not this package's.
+- **Verification acceptance bounds are fixed, not configurable.** To keep a
+  poisoned stored row from demanding an absurd computation at verify time,
+  the parser only accepts `m` ∈ [8 KiB, 4 GiB], `t` ∈ [1, 512], `p` ∈ [1, 64]
+  (with `m ≥ 8·p`), salt ∈ [8, 64] bytes, tag ∈ [12, 512] bytes. Every profile
+  a legitimate encoder emits fits comfortably; but if your store somehow
+  contains spec-legal Argon2id hashes outside these bounds (e.g. a bespoke
+  KDF deployment with `m > 4 GiB`, or `p = ProcessorCount` on a >64-core
+  host under a pre-bounds version of this library), they will fail
+  verification here rather than run. **The failure is indistinguishable from
+  a wrong password, and because rehash-on-login requires a successful
+  verify, there is no automatic upgrade path — affected users need a
+  password reset.** Audit historical work-factor configs before upgrading.
+  There is no override switch — that is a deliberate fail-closed trade,
+  stated here so nobody discovers it in production.
+- **Bounds cap the poisoned-row DoS; they don't eliminate it.** The worst
+  case a hostile row can still demand is one bounded-but-heavy computation
+  (up to 4 GiB / 512 passes). The rate-limiter guidance in the README is the
+  other half of the mitigation; pods sized below the acceptance ceiling
+  would OOM on a legitimate hash of that size too.
 
 ## Tokens & protocol (.NET 10)
 
@@ -83,11 +102,16 @@ purpose, not because the code beneath is half-finished.
   picks the key via PostQuantum.Jwt's `SignatureKeyResolver` (demonstrated in
   the sample). This package does not itself manage a key store, schedule
   rotations, or pick "the current key" for you — you own the key ring.
-- **Revocation is the caller's concern.** Each token carries a unique `jti`
+- **Revocation is the caller's concern — and does not cross service
+  boundaries by itself.** Each token carries a unique `jti`
   (`Guid.NewGuid().ToString("N")`); the samples implement an in-memory
   revocation list, but the library itself does not provide one. Plug your own
   cache (Redis, a DB table) into the post-authentication pipeline as the
-  samples illustrate.
+  samples illustrate. Note the sharpest edge: a downstream verifier that only
+  checks signature/issuer/audience/expiry (like the Verifier demo) will keep
+  accepting a token the issuer revoked, until it expires. Cross-service
+  revocation requires a **shared** store consulted by every verifier; short
+  token lifetimes bound the exposure either way.
 - **No `nbf` floor by default.** PostQuantum.Jwt's builder emits `iat` and
   `exp`; whether `nbf` is stamped is delegated to it. Our payload KAT pins
   consistency (`iat ≤ exp`, lifetime correct) and tolerates either presence.
@@ -113,11 +137,31 @@ purpose, not because the code beneath is half-finished.
   (ML-DSA, X-Wing) live in PostQuantum.Jwt; this repo additionally pins the
   *identity* contract — header `alg`/`kid`/`cty`, registered + private claim
   shapes, and the sign-then-encrypt envelope structure — as structural KATs.
-- **No property-based or fuzz tests yet.** The PHC parser and token validator
-  have hand-written malformed-input corpora but no generative fuzzing.
-- **Benchmarks are not run in CI.** `benchmarks/PostQuantum.Identity.Benchmarks`
-  (BenchmarkDotNet) exists for local Argon2id work-factor tuning, but the CI
-  workflow does not execute it or track regressions over time.
+- **Property-based / fuzz coverage is in place for the PHC parser; the token
+  validator's is upstream.** The PHC parser has a deterministic generative
+  corpus (seeded-PRNG roundtrips across the full acceptance bounds, structural
+  mutations, hostile garbage — thousands of cases per run, reproducible from
+  the fixed seeds) alongside the hand-written adversarial corpus. The token
+  *validator* lives in PostQuantum.Jwt, so generative fuzzing of token
+  parsing belongs to (and is tracked in) that repo; this repo pins the
+  issuance contract structurally but does not fuzz the upstream validator.
+  Coverage-guided fuzzing (e.g. SharpFuzz) remains unexplored on both.
+- **Benchmarks run in CI with a step-change budget, not a precision budget.**
+  The Argon2id benchmarks execute on every push to `main` (short job,
+  net10.0), with history tracked on `gh-pages` and a 150% alert threshold
+  that fails the job. Hosted-runner noise makes a tighter budget dishonest:
+  this catches an accidental extra memory pass or a quadratic slip, **not** a
+  quiet 10% drift. Latency-precise comparisons still belong on pinned
+  hardware with the full BenchmarkDotNet job
+  (`benchmarks/PostQuantum.Identity.Benchmarks`).
+- **macOS is a discovery lane, not a PQ-required lane — and runs on pushes
+  to `main`, not per-PR.** The `macos-discovery` job builds and runs the
+  net10 suite on `macos-latest` and reports (without failing) whether the
+  BCL's macOS ML-DSA path let the PQ token tests run on the current runner
+  image; that answer changes per runner-image release, not per commit, so
+  burning the scarcest runner class on every PR would buy nothing. Windows
+  and the pinned-OpenSSL Linux lane remain the two zero-skip
+  cryptographic-assurance lanes, on every PR.
 
 ## Operational hygiene
 

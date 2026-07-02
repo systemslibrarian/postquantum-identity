@@ -5,6 +5,8 @@ Design notes and pointers for PostQuantum.Identity.
 ## Start here
 
 - [Project README](../README.md) — overview, install, usage, API table.
+- [QUANTUM-READINESS.md](QUANTUM-READINESS.md) — what to do about the quantum threat, in what order, for Identity apps.
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — symptom → cause → fix for everything adopters actually hit.
 - [MIGRATION.md](MIGRATION.md) — moving an existing store from PBKDF2 to Argon2id.
 - [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) — auditor-facing independent verification guide.
 - [THREAT-MODEL.md](THREAT-MODEL.md) — STRIDE per surface with per-threat code/test pointers.

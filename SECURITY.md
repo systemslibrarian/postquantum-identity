@@ -27,13 +27,13 @@ of the code itself.
 
 | Version             | Supported           |
 |---------------------|---------------------|
-| `0.5.0-preview.*`   | ✅ (latest preview)  |
+| `0.6.0-preview.*`   | ✅ (latest preview)  |
+| `0.5.0-preview.*`   | ❌ (superseded)      |
 | `0.3.0-preview.*`   | ❌ (superseded)      |
 | `0.2.0-preview.*`   | ❌ (superseded)      |
-| `0.1.0-preview.*`   | ❌ (superseded)      |
 | anything older      | ❌                  |
 
-During the `0.5.0-preview.*` series only the most recent preview receives fixes.
+During the `0.6.0-preview.*` series only the most recent preview receives fixes.
 
 ## Reporting a vulnerability
 
@@ -66,6 +66,24 @@ promised.
   **both** X25519 and ML-KEM-768 are broken.
 - **Fail-closed behavior.** Malformed stored hashes never verify. Every token
   validation failure raises. There is no unsigned path and no `alg: none`.
+- **Bounded verification cost.** A stored PHC hash declares the work factors
+  spent to verify it, so a poisoned row (compromised database, hostile
+  import) could otherwise demand an absurd computation — `m=2147483647`
+  would be a ~2 TiB allocation attempt on every sign-in against that row.
+  The parser enforces acceptance bounds (`m` ∈ [8 KiB, 4 GiB], `t` ∈ [1, 512],
+  `p` ∈ [1, 64], `m ≥ 8·p`, salt ∈ [8, 64] bytes, tag ∈ [12, 512] bytes) that
+  clear every profile a legitimate encoder emits — reference CLI, libsodium
+  up to its "sensitive" 1 GiB profile, all of this library's presets — while
+  capping what a hostile row can extract from one call. Out-of-bounds values
+  fail closed at parse time, before any allocation.
+- **Canonical stored form.** Every accepted hash has exactly one spelling.
+  Salt and tag segments must be the single canonical unpadded-base64
+  encoding of their bytes (the decoder rejects embedded whitespace and
+  non-zero trailing bits that `Convert` would otherwise silently tolerate),
+  and numeric fields reject leading-zero aliases (`m=08192` ≠ `m=8192`), so
+  distinct stored strings can never alias to the same verifier. Oversized
+  base64 fields are rejected on length before any decode work, so the parse
+  cost itself is bounded too.
 - **Reserved-claim immunity.** User-supplied claims cannot overwrite the seven
   reserved claims (`iss/sub/aud/exp/nbf/iat/jti`); they are filtered server-
   side and a tampered store cannot weaponize them through the issuance path.
@@ -109,7 +127,10 @@ promised.
 (`t = 3`), 1 lane (`p = 1`), 16-byte salt, 32-byte tag. These exceed the OWASP
 minimum and follow the RFC 9106 second recommended profile. Construction throws
 for parameters below the documented minimums (8 MiB / t≥1 / p≥1 / 16-byte salt /
-16-byte tag).
+16-byte tag) **and above the documented maximums** (4 GiB / t≤512 / p≤64 /
+64-byte salt / 512-byte tag) — the maximums mirror the verifier's acceptance
+bounds exactly, so this library can never emit a hash its own `Verify` would
+refuse.
 
 ## Cryptographic assurance
 
@@ -128,6 +149,12 @@ Test corpus**:
 - **Compute-then-format-then-verify roundtrips** across OWASP 2024 minimum,
   the library default / RFC 9106 second profile, a stronger profile, and the
   documented minimum allowed by `Argon2idOptions`.
+- **Deterministic generative (fuzz-style) corpus** for the PHC parser —
+  thousands of seeded-PRNG cases per run: format/parse roundtrips across the
+  full acceptance bounds, structural mutations of valid hashes, and hostile
+  random garbage. Pins that parsing never throws, anything accepted is within
+  the acceptance bounds, and no mutation of a stored hash ever verifies.
+  Fixed seeds make every failure reproducible byte-for-byte.
 
 The hybrid-token path is covered end-to-end against the genuine
 `PqJwtValidator`, with:

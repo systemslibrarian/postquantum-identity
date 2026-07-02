@@ -71,6 +71,13 @@ Every line of this is wired into [`.github/workflows/release.yml`](../.github/wo
   pinned in plain text outside any tooling.
 - **Gated `nuget.org` publish** — the `publish` job is bound to the
   `nuget-publish` environment, so an approver must release the artifact.
+- **Trusted Publishing (no long-lived API key)** — the publish job exchanges
+  its GitHub OIDC token for a **short-lived** nuget.org API key via
+  `NuGet/login`, authorized by a trusted-publishing policy on nuget.org that
+  pins this repository and workflow. There is no `NUGET_API_KEY` secret to
+  leak, rotate, or exfiltrate; a stolen copy of the repo's secrets cannot
+  publish this package. The policy should also pin the `nuget-publish`
+  environment name so no other workflow in the repo can mint a publish token.
 - **Optional author code-signing** — if a code-signing certificate is
   configured on the environment, the workflow author-signs the `.nupkg`
   before push, with a DigiCert timestamper. Absent the cert we log it and
@@ -82,7 +89,7 @@ Every line of this is wired into [`.github/workflows/release.yml`](../.github/wo
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-identity
 cd postquantum-identity
-git checkout v0.5.0-preview.1   # or the tag you're auditing
+git checkout v0.6.0-preview.1   # or the tag you're auditing
 dotnet pack src/PostQuantum.Identity/PostQuantum.Identity.csproj \
   -c Release -o ./local
 ```

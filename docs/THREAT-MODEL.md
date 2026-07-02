@@ -68,8 +68,9 @@ one process. Everything past the dashed line is yours to manage.
 | **I**nformation disclosure | Side channels (timing, cache) reading verification | Final tag compare is constant-time; the underlying Argon2id is the Konscious library's implementation, with whatever side-channel properties it inherits | Side-channel mitigation beyond constant-time tag compare is not promised |
 | **D**enial of service | An attacker spams `/login` to burn server CPU/memory (asymmetric DoS) | Rate-limiter wiring shipped in both samples (`AddRateLimiter` + `RequireRateLimiting("auth")`). `LowMemoryContainer()` preset for memory-constrained hosts | Pair in-process limits with edge limits (CDN/WAF) — yours |
 | **D**enial of service | A weak configuration (`m < 8 MiB`) silently shipping to production | `Argon2idOptions.Validate()` enforces a hard floor at construction. `IValidateOptions<Argon2idOptions>` registered in DI fails the host at startup with a message naming the offending property and value | nothing — this one's covered |
+| **D**enial of service | A poisoned stored row declaring absurd work factors (`m=2147483647` → ~2 TiB allocation attempt on every verify of that row) | `PhcString.TryParse` enforces acceptance bounds — `m` ∈ [8 KiB, 4 GiB], `t` ∈ [1, 512], `p` ∈ [1, 64], `m ≥ 8·p`, salt ∈ [8, 64] B, tag ∈ [12, 512] B — pinned at both edges of every axis in `PhcStringTests` and swept by the generative corpus. Out-of-bounds fails closed before any allocation | The bounded worst case (one ≤ 4 GiB / ≤ 512-pass computation) is throttled by the same rate limiter that protects `/login` generally — yours to wire (samples show it) |
 | **E**levation of privilege | Cross-user confusion via salt/parameter reuse | Salts are fresh `RandomNumberGenerator` bytes per `HashPassword`; the hasher is immutable + thread-safe, with concurrent-correctness regression tests pinning it | nothing — the regression test for distinct concurrent salts is in `Argon2idProductionScenarioTests` |
-| **E**levation of privilege | Adversarial PHC string coaxing a verification match | `PhcString.TryParse` is fail-closed on every adversarial input in the regression corpus (variant casing, segment-count, embedded whitespace, base64 attacks, path-traversal noise). `Verify` returns `Failed` on anything that doesn't parse | nothing — pinned |
+| **E**levation of privilege | Adversarial PHC string coaxing a verification match | `PhcString.TryParse` is fail-closed on every adversarial input in the regression corpus (variant casing, segment-count, embedded whitespace, base64 attacks, path-traversal noise), and salt/tag segments must be the single canonical unpadded-base64 encoding — whitespace-skipping and non-zero-trailing-bit aliases that `Convert` would tolerate are rejected. A deterministic generative corpus (seeded mutations + hostile garbage, thousands of cases) additionally pins that no mutation of a stored hash ever verifies. `Verify` returns `Failed` on anything that doesn't parse | nothing — pinned |
 
 ### Cryptographic correctness assurance
 
@@ -78,6 +79,8 @@ one process. Everything past the dashed line is yours to manage.
 - **PHC emitter wire-format pin** — bytes-for-bytes match against the published vector.
 - **Compute → format → verify roundtrips** across OWASP / RFC 9106 / strong / minimum profiles.
 - **Per-axis rehash-threshold theory** — every work-factor axis (m/t/p/salt/tag) independently flags rehash.
+- **Deterministic generative corpus** (`PhcStringPropertyTests`) — seeded-PRNG roundtrips across the full acceptance bounds, structural mutations of valid hashes, and hostile garbage; pins that parsing never throws, accepted values stay in bounds, and no mutation verifies.
+- **Acceptance-bounds edge pin** — both edges of every axis (`m`/`t`/`p`/salt/tag, plus `m ≥ 8·p`) asserted exactly in `PhcStringTests`.
 
 ---
 
@@ -147,6 +150,7 @@ in your application or platform.
 |---|---|---|---|
 | `0.3.0-preview.1` | internal — Paul Clark | 2026-06-02 | Documented; no third-party audit yet |
 | `0.5.0-preview.1` | internal — Paul Clark | 2026-06-03 | Re-reviewed; no scope changes; production-readiness polish only |
+| `0.6.0-preview.1` | internal | 2026-07-02 | Verify-path hardening: PHC acceptance bounds (poisoned-row DoS), canonicality pins (base64 + numeric), deterministic generative corpus; 7-angle adversarial code review of the changeset |
 
 Independent third-party review is one of the [`Roadmap to 1.0`](../README.md#roadmap-to-10) gates.
 

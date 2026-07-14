@@ -15,7 +15,7 @@
     <!-- Real ASP.NET Core Identity stores, backed by an in-memory EF database so
          the sample runs with zero external setup. -->
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
     <!-- The PqJwtBearer authentication handler — validates the post-quantum
          tokens this app issues, with kid-based key resolution for rotation. -->
     <PackageReference Include="PostQuantum.Jwt.AspNetCore" Version="1.0.0" />

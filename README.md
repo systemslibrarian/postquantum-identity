@@ -231,7 +231,7 @@ in lockstep):
 ```bash
 dotnet add package PostQuantum.Identity
 # or pin the exact version:
-dotnet add package PostQuantum.Identity --version 1.0.0
+dotnet add package PostQuantum.Identity --version 1.1.0
 ```
 
 Targets `net8.0`, `net9.0`, and `net10.0`. The token features light up on

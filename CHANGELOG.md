@@ -4,6 +4,26 @@ All notable changes to PostQuantum.Identity are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/), and the project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-08-19
+
+Dependency maintenance. No public API change and no behavioural change; a drop-in over 1.0.0.
+
+### Changed
+
+- **`Microsoft.Extensions.Identity.Core` 8.0.0 → 10.0.11** and
+  **`Microsoft.Extensions.Hosting.Abstractions` 8.0.0 → 10.0.11.** Minor rather than patch
+  because these raise the published dependency floor across a major version — a consumer of
+  `PostQuantum.Identity` now resolves the 10.0.x line of both.
+
+  Worth noting for anyone on .NET 8: `Microsoft.Extensions.Identity.Core` 10.0.11 declares only
+  `.NETFramework4.6.2`, `.NETStandard2.0` and `net10.0` dependency groups — it has no `net8.0`
+  group, so the `net8.0` and `net9.0` targets of this package resolve its `netstandard2.0`
+  assets. CI builds and tests green on all three target frameworks with this in place.
+- Test and CI toolchain updated — `Microsoft.NET.Test.Sdk` 18.9.0, `xunit` 2.9.3,
+  `xunit.runner.visualstudio` 4.0.0, `coverlet.collector` 10.0.1, `Xunit.SkippableFact` 1.5.61,
+  `Microsoft.SourceLink.GitHub` 10.0.400, EF Core sample packages, and the GitHub Actions used by
+  CI and release. None of these reach the published package.
+
 ## [1.0.0] — 2026-07-02
 
 **Stable API on stable upstream.** From this release the public API only

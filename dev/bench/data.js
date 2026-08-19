@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787119387460,
+  "lastUpdate": 1787119575977,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -468,6 +468,84 @@ window.BENCHMARK_DATA = {
             "value": 102998051.73333333,
             "unit": "ns",
             "range": "± 71260.79497320774"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c9adae55925cd43e7e9d14227de0d19229678f00",
+          "message": "Bump coverlet.collector from 6.0.2 to 10.0.1 (#7)\n\n---\nupdated-dependencies:\n- dependency-name: coverlet.collector\n  dependency-version: 10.0.1\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:38:13-04:00",
+          "tree_id": "82219cf707f5331ab82ac9a5bb727c09375ff067",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/c9adae55925cd43e7e9d14227de0d19229678f00"
+        },
+        "date": 1787119575218,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 295972381.5,
+            "unit": "ns",
+            "range": "± 2359292.635574697"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 295284305.1666667,
+            "unit": "ns",
+            "range": "± 2351117.024500766"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 305135146.3333333,
+            "unit": "ns",
+            "range": "± 1019496.6623047785"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 802201470.6666666,
+            "unit": "ns",
+            "range": "± 9472373.520139836"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 798854843,
+            "unit": "ns",
+            "range": "± 4289862.588048363"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 792616639.3333334,
+            "unit": "ns",
+            "range": "± 942129.1508754696"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 59374576.629629634,
+            "unit": "ns",
+            "range": "± 337921.244160134"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 58268309.96296296,
+            "unit": "ns",
+            "range": "± 94109.34247743075"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 58685896.55555556,
+            "unit": "ns",
+            "range": "± 91107.73495784136"
           }
         ]
       }

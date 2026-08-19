@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787118983041,
+  "lastUpdate": 1787119103504,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -312,6 +312,84 @@ window.BENCHMARK_DATA = {
             "value": 104716152.26666667,
             "unit": "ns",
             "range": "± 436302.59986744943"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7dfc89f42f92690d7e36f483eb9a9cb81aba7b13",
+          "message": "Build(deps): Bump actions/upload-artifact from 5 to 7 (#3)\n\nBumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 5 to 7.\n- [Release notes](https://github.com/actions/upload-artifact/releases)\n- [Commits](https://github.com/actions/upload-artifact/compare/v5...v7)\n\n---\nupdated-dependencies:\n- dependency-name: actions/upload-artifact\n  dependency-version: '7'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:38:02-04:00",
+          "tree_id": "c4f60c9745c770f8a266793b8be75c842ce3a45e",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/7dfc89f42f92690d7e36f483eb9a9cb81aba7b13"
+        },
+        "date": 1787119102944,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 268095151.66666666,
+            "unit": "ns",
+            "range": "± 1159135.2937970974"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 267237555.5,
+            "unit": "ns",
+            "range": "± 413209.02819063625"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 268154642,
+            "unit": "ns",
+            "range": "± 700854.86082373"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 730505278.3333334,
+            "unit": "ns",
+            "range": "± 1707137.2668664735"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 730729597.3333334,
+            "unit": "ns",
+            "range": "± 1177413.586928711"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 732400412.3333334,
+            "unit": "ns",
+            "range": "± 1683610.9328610732"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 52295288.800000004,
+            "unit": "ns",
+            "range": "± 41676.906273379616"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 52315094.36666667,
+            "unit": "ns",
+            "range": "± 80983.60952540711"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 52319272.43333334,
+            "unit": "ns",
+            "range": "± 145387.44820101754"
           }
         ]
       }

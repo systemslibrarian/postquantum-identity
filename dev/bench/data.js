@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787119891767,
+  "lastUpdate": 1787120545324,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -624,6 +624,84 @@ window.BENCHMARK_DATA = {
             "value": 103195700.2,
             "unit": "ns",
             "range": "± 180842.9906628386"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eada416121a17d29cc80a6589713c7bb303c283c",
+          "message": "Bump Microsoft.Extensions.Hosting.Abstractions from 8.0.0 to 10.0.11 (#28)\n\n---\nupdated-dependencies:\n- dependency-name: Microsoft.Extensions.Hosting.Abstractions\n  dependency-version: 10.0.11\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:38:20-04:00",
+          "tree_id": "ddd474825a13ebc98b862c46144deef5c8b08a50",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/eada416121a17d29cc80a6589713c7bb303c283c"
+        },
+        "date": 1787120544391,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 513254034,
+            "unit": "ns",
+            "range": "± 1463336.2980080827"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 511001558.3333333,
+            "unit": "ns",
+            "range": "± 1109705.4751195624"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 515205104.6666667,
+            "unit": "ns",
+            "range": "± 1118407.7688143682"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1383840027.3333333,
+            "unit": "ns",
+            "range": "± 1537579.779892521"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1380966553.3333333,
+            "unit": "ns",
+            "range": "± 699886.5853281753"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1382111520.6666667,
+            "unit": "ns",
+            "range": "± 1416569.0638356935"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 101035984.13333333,
+            "unit": "ns",
+            "range": "± 342369.550129468"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 101396082.40000002,
+            "unit": "ns",
+            "range": "± 206268.7143877165"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 100524432.86666667,
+            "unit": "ns",
+            "range": "± 436788.832314758"
           }
         ]
       }

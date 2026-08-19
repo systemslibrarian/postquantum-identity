@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787118295044,
+  "lastUpdate": 1787118983041,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -234,6 +234,84 @@ window.BENCHMARK_DATA = {
             "value": 99450666.73333333,
             "unit": "ns",
             "range": "± 405626.961149153"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f73e14d8c3d70ddac577cad06a0e598e0deb349e",
+          "message": "Build(deps): Bump actions/attest-build-provenance from 3 to 4 (#2)\n\nBumps [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) from 3 to 4.\n- [Release notes](https://github.com/actions/attest-build-provenance/releases)\n- [Changelog](https://github.com/actions/attest-build-provenance/blob/main/RELEASE.md)\n- [Commits](https://github.com/actions/attest-build-provenance/compare/v3...v4)\n\n---\nupdated-dependencies:\n- dependency-name: actions/attest-build-provenance\n  dependency-version: '4'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:37:58-04:00",
+          "tree_id": "6bdd44c064018003f8bb7b6200077525c81bd6fc",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/f73e14d8c3d70ddac577cad06a0e598e0deb349e"
+        },
+        "date": 1787118982176,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 519142045.3333333,
+            "unit": "ns",
+            "range": "± 1670480.5596391517"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 515035862,
+            "unit": "ns",
+            "range": "± 1695563.34585323"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 513581727,
+            "unit": "ns",
+            "range": "± 2261048.233639433"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1384592637.3333333,
+            "unit": "ns",
+            "range": "± 4056161.996120758"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1391276956,
+            "unit": "ns",
+            "range": "± 5608724.4838685915"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1395885910.6666667,
+            "unit": "ns",
+            "range": "± 2265317.897760562"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 105276470.86666667,
+            "unit": "ns",
+            "range": "± 510082.7487938174"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 104168213.13333333,
+            "unit": "ns",
+            "range": "± 260696.77984250782"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 104716152.26666667,
+            "unit": "ns",
+            "range": "± 436302.59986744943"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787121481405,
+  "lastUpdate": 1787122748670,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -780,6 +780,84 @@ window.BENCHMARK_DATA = {
             "value": 100791770.13333333,
             "unit": "ns",
             "range": "± 75663.24093516963"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c57276428ac3d99afd4ae40489cf0e3c05cc5067",
+          "message": "Bump the dotnet-test-and-build group with 5 updates (#30)\n\nBumps Microsoft.NET.Test.Sdk from 17.11.1 to 18.9.0\nBumps Microsoft.SourceLink.GitHub from 8.0.0 to 10.0.400\nBumps xunit from 2.9.2 to 2.9.3\nBumps xunit.runner.visualstudio from 2.8.2 to 4.0.0\nBumps Xunit.SkippableFact from 1.5.23 to 1.5.61\n\n---\nupdated-dependencies:\n- dependency-name: Microsoft.NET.Test.Sdk\n  dependency-version: 18.9.0\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n  dependency-group: dotnet-test-and-build\n- dependency-name: Microsoft.SourceLink.GitHub\n  dependency-version: 10.0.400\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n  dependency-group: dotnet-test-and-build\n- dependency-name: xunit\n  dependency-version: 2.9.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: dotnet-test-and-build\n- dependency-name: xunit.runner.visualstudio\n  dependency-version: 4.0.0\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n  dependency-group: dotnet-test-and-build\n- dependency-name: Xunit.SkippableFact\n  dependency-version: 1.5.61\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: dotnet-test-and-build\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:43:30-04:00",
+          "tree_id": "a46d9eb47a7b6d1ac2c4fa4ead3248e090637a9a",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/c57276428ac3d99afd4ae40489cf0e3c05cc5067"
+        },
+        "date": 1787122748194,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 508640726,
+            "unit": "ns",
+            "range": "± 356638.59349907713"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 514578277,
+            "unit": "ns",
+            "range": "± 980988.1577776563"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 511270403.3333333,
+            "unit": "ns",
+            "range": "± 2014673.5243468937"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1376705545.3333333,
+            "unit": "ns",
+            "range": "± 1322754.6742617595"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1374898460,
+            "unit": "ns",
+            "range": "± 1858114.1180866691"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1376186279,
+            "unit": "ns",
+            "range": "± 3999189.14585782"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 101671753.33333333,
+            "unit": "ns",
+            "range": "± 127911.39335061148"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 102678688.06666666,
+            "unit": "ns",
+            "range": "± 1772027.7565287966"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 100850292.39999999,
+            "unit": "ns",
+            "range": "± 123325.18115924358"
           }
         ]
       }

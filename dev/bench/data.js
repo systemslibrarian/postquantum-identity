@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787122748670,
+  "lastUpdate": 1787181162245,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -858,6 +858,84 @@ window.BENCHMARK_DATA = {
             "value": 100850292.39999999,
             "unit": "ns",
             "range": "± 123325.18115924358"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "systemslibrarian@gmail.com",
+            "name": "Paul Clark",
+            "username": "systemslibrarian"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40acad6a9b5d1c5f4d3e88d47cce1c07c701831b",
+          "message": "release: 1.1.0 (#31)\n\nBumps PostQuantum.Identity 1.0.0 -> 1.1.0, updates the README install snippet and\nrecords the release.\n\nMinor rather than patch: the published dependency floor crosses a major version.\nMicrosoft.Extensions.Identity.Core and Microsoft.Extensions.Hosting.Abstractions\nboth move 8.0.0 -> 10.0.11, so a consumer of this package now resolves the 10.0.x\nline of each. No API or behavioural change here.\n\nOne thing reviewers should know: Microsoft.Extensions.Identity.Core 10.0.11\ndeclares only .NETFramework4.6.2, .NETStandard2.0 and net10.0 dependency groups --\nit has no net8.0 group -- while this package multi-targets net8.0;net9.0;net10.0.\nThe older targets therefore resolve its netstandard2.0 assets. That combination\nwas flagged as a risk during the dependency sweep, and main's CI has since gone\ngreen on all three target frameworks with it in place, so it resolves correctly\nin practice.\n\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-19T19:11:01-04:00",
+          "tree_id": "b8d01dbd38870b70570c850e7d935f6886c6502c",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/40acad6a9b5d1c5f4d3e88d47cce1c07c701831b"
+        },
+        "date": 1787181161709,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 277134543,
+            "unit": "ns",
+            "range": "± 1050471.5153174074"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 276636766.1666667,
+            "unit": "ns",
+            "range": "± 922079.0176159434"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 278628093,
+            "unit": "ns",
+            "range": "± 843404.9613979929"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 758614079,
+            "unit": "ns",
+            "range": "± 2166058.75693597"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 757604151,
+            "unit": "ns",
+            "range": "± 3588956.454261879"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 759656757.6666666,
+            "unit": "ns",
+            "range": "± 2063079.8225045325"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 53116408.86666667,
+            "unit": "ns",
+            "range": "± 126697.98143843007"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 53337692.1,
+            "unit": "ns",
+            "range": "± 407278.25080867094"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 53170967.833333336,
+            "unit": "ns",
+            "range": "± 54584.46058836718"
           }
         ]
       }

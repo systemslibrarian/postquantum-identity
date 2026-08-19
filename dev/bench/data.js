@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787120545324,
+  "lastUpdate": 1787121481405,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -702,6 +702,84 @@ window.BENCHMARK_DATA = {
             "value": 100524432.86666667,
             "unit": "ns",
             "range": "± 436788.832314758"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c21bdde1621d498aa678396775cd66f0929c75c6",
+          "message": "Bump Microsoft.EntityFrameworkCore.InMemory from 10.0.0 to 10.0.11 (#27)\n\n---\nupdated-dependencies:\n- dependency-name: Microsoft.EntityFrameworkCore.InMemory\n  dependency-version: 10.0.11\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n- dependency-name: Microsoft.EntityFrameworkCore.InMemory\n  dependency-version: 10.0.11\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-19T01:43:22-04:00",
+          "tree_id": "17c1b8325fb38fa5b3d8278524d659a37e13fd49",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/c21bdde1621d498aa678396775cd66f0929c75c6"
+        },
+        "date": 1787121480477,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 516872906,
+            "unit": "ns",
+            "range": "± 1086232.819743079"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 525975748,
+            "unit": "ns",
+            "range": "± 2665219.3999976814"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 521018897.3333333,
+            "unit": "ns",
+            "range": "± 2385296.416071247"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1388135738.6666667,
+            "unit": "ns",
+            "range": "± 4765111.927360608"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1386199830.3333333,
+            "unit": "ns",
+            "range": "± 2285217.4287822885"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1395912959.6666667,
+            "unit": "ns",
+            "range": "± 2784915.295883222"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 101719864,
+            "unit": "ns",
+            "range": "± 617486.4511626445"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 101356637.46666665,
+            "unit": "ns",
+            "range": "± 363011.38667376316"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 100791770.13333333,
+            "unit": "ns",
+            "range": "± 75663.24093516963"
           }
         ]
       }

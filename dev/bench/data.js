@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787181162245,
+  "lastUpdate": 1791726118491,
   "repoUrl": "https://github.com/systemslibrarian/postquantum-identity",
   "entries": {
     "Argon2id benchmarks": [
@@ -936,6 +936,84 @@ window.BENCHMARK_DATA = {
             "value": 53170967.833333336,
             "unit": "ns",
             "range": "± 54584.46058836718"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "systemslibrarian@gmail.com",
+            "name": "Paul Clark",
+            "username": "systemslibrarian"
+          },
+          "committer": {
+            "email": "systemslibrarian@gmail.com",
+            "name": "Paul Clark",
+            "username": "systemslibrarian"
+          },
+          "distinct": true,
+          "id": "6df8c62b338441e8ee2e9e0e7ad0d3d3361e75ee",
+          "message": "docs: record DAYBREAK audit authorization",
+          "timestamp": "2026-10-11T09:22:50-04:00",
+          "tree_id": "b66bde25b14090c0aefb8dbeda15565e2c83469c",
+          "url": "https://github.com/systemslibrarian/postquantum-identity/commit/6df8c62b338441e8ee2e9e0e7ad0d3d3361e75ee"
+        },
+        "date": 1791726117672,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"balanced:65536:3\")",
+            "value": 512724523.3333333,
+            "unit": "ns",
+            "range": "± 449317.86387960735"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"balanced:65536:3\")",
+            "value": 510277094.3333333,
+            "unit": "ns",
+            "range": "± 866480.978164168"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"balanced:65536:3\")",
+            "value": 517809672.6666667,
+            "unit": "ns",
+            "range": "± 5730127.256399663"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"hardened:131072:4\")",
+            "value": 1387180662.6666667,
+            "unit": "ns",
+            "range": "± 1823223.8467772775"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"hardened:131072:4\")",
+            "value": 1372185147.3333333,
+            "unit": "ns",
+            "range": "± 742126.7362521939"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"hardened:131072:4\")",
+            "value": 1378522562.6666667,
+            "unit": "ns",
+            "range": "± 3189914.997080068"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.HashPassword(Profile: \"owasp-min:19456:2\")",
+            "value": 101486331.13333333,
+            "unit": "ns",
+            "range": "± 386690.2395806953"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyCorrect(Profile: \"owasp-min:19456:2\")",
+            "value": 101582570.26666665,
+            "unit": "ns",
+            "range": "± 117568.0342454246"
+          },
+          {
+            "name": "PostQuantum.Identity.Benchmarks.Argon2idBenchmarks.VerifyWrong(Profile: \"owasp-min:19456:2\")",
+            "value": 101743899.33333333,
+            "unit": "ns",
+            "range": "± 296688.84219648433"
           }
         ]
       }
